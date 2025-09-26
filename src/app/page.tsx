@@ -86,6 +86,7 @@ const trustIndicators = [
 
 export default function Home() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 50);
@@ -93,13 +94,21 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen relative overflow-hidden">
       <nav className="fixed top-0 left-0 right-0 z-50">
-        <div className={`sticky-nav-bar w-full py-4 ${isScrolled ? 'scrolled' : ''}`}>
+        <div className={`sticky-nav-bar w-full py-3 ${isScrolled ? 'scrolled' : ''}`}>
           <div className="elegant-container flex items-center justify-between">
             <div className="flex items-center space-x-8">
-              <h1 className="logo cursor-pointer select-none text-capri">MizeUp</h1>
+              <h1 className="logo cursor-pointer select-none">MizeUp</h1>
               <div className="hidden lg:flex items-center space-x-2">
                 <a href="#features" className="nav-link">Product</a>
                 <a href="#how-it-works" className="nav-link">How It Works</a>
@@ -111,25 +120,83 @@ export default function Home() {
             <div className="flex items-center space-x-3">
               <button className="modern-btn btn-secondary">Log In</button>
               <button className="modern-btn btn-primary blue-gradient">Get Started</button>
-              <button className="lg:hidden p-2 rounded-lg text-charcoal transition-all duration-200 ml-2">
+              <button 
+                onClick={toggleMobileMenu}
+                className="lg:hidden p-2 rounded-lg text-charcoal hover:bg-gray-100 transition-all duration-200 ml-2"
+              >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  {isMobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  )}
                 </svg>
               </button>
             </div>
           </div>
         </div>
+        
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg">
+            <div className="elegant-container py-6">
+              <div className="flex flex-col space-y-4">
+                <a 
+                  href="#features" 
+                  onClick={closeMobileMenu}
+                  className="text-charcoal hover:text-capri transition-colors py-2 pt-6"
+                >
+                  Product
+                </a>
+                <a 
+                  href="#how-it-works" 
+                  onClick={closeMobileMenu}
+                  className="text-charcoal hover:text-capri transition-colors py-2"
+                >
+                  How It Works
+                </a>
+                <a 
+                  href="#pricing" 
+                  onClick={closeMobileMenu}
+                  className="text-charcoal hover:text-capri transition-colors py-2"
+                >
+                  Pricing
+                </a>
+                <a 
+                  href="#about" 
+                  onClick={closeMobileMenu}
+                  className="text-charcoal hover:text-capri transition-colors py-2"
+                >
+                  About
+                </a>
+                <a 
+                  href="#contact" 
+                  onClick={closeMobileMenu}
+                  className="text-charcoal hover:text-capri transition-colors py-2 pb-6"
+                >
+                  Contact
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
       <section className="relative z-10 section-padding-lg">
         <div className="hero-container text-center">
-          <div className="glass-card p-12 rounded-3xl mb-16 glow-card">
+          <div className="bg-white p-12 rounded-3xl mb-16 shadow-lg">
             <h1 className="text-5xl md:text-6xl font-bold mb-8">
-              <span className="text-charcoal">Opti<span className="underline decoration-2 underline-offset-4" style={{textDecorationColor: 'var(--primary)'}}>mize</span> Reimbursements.</span> <span className="text-gradient">Mini<span className="underline decoration-2 underline-offset-4" style={{textDecorationColor: 'var(--primary)'}}>mize</span> paperwork.</span>
+              <div className="text-5xl md:text-6xl font-bold" style={{
+                background: 'linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>Maximize. Optimize.</div>
+              <div className="text-charcoal text-4xl md:text-5xl font-semibold mt-4">Your Therapy Practice.</div>
             </h1>
             <p className="text-xl text-charcoal mb-10 max-w-3xl mx-auto leading-relaxed">
-              Stop leaving money on the table with hidden billing codes and streamline your practice.
+              Stop leaving money on the table with hidden billing codes.
               Earn $500+ additional monthly revenue while saving 3+ hours weekly in tedious documentation.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
@@ -191,7 +258,7 @@ export default function Home() {
       {/* About Section */}
       <Section id="about">
         <SectionHeader 
-          title="About MizeUp" 
+          title="About Us" 
           subtitle="Built by therapists, for therapists"
         />
         <div className="glass-card p-12 rounded-3xl glow-card text-center">
@@ -246,23 +313,23 @@ export default function Home() {
         </div>
       </Section>
 
-      <footer className="relative z-10 section-padding border-t border-cream">
+      <footer className="py-8">
         <div className="elegant-container">
-          <div className="glass p-8 rounded-2xl glow">
-            <div className="flex flex-col md:flex-row justify-between items-center">
-              <div className="mb-4 md:mb-0">
-                <h3 className="text-2xl font-bold text-capri mb-2">MizeUp</h3>
-                <p className="text-charcoal">Streamlining therapy practice management and billing.</p>
-              </div>
-              <div className="flex space-x-6">
-                <a href="#" className="text-charcoal hover:text-capri transition-colors">About</a>
-                <a href="#" className="text-charcoal hover:text-capri transition-colors">Contact</a>
-                <a href="#" className="text-charcoal hover:text-capri transition-colors">Privacy Policy</a>
-                <a href="#" className="text-charcoal hover:text-capri transition-colors">Terms</a>
-              </div>
+          <div className="flex flex-col lg:flex-row justify-between items-center space-y-6 lg:space-y-0">
+            <div className="text-center lg:text-left">
+              <h3 className="text-2xl font-bold mb-2 logo">MizeUp</h3>
+              <p className="text-gray-600 text-sm">Maximize. Optimize. Your Therapy Practice.</p>
             </div>
-            <div className="mt-6 pt-6 border-t border-cream text-center text-charcoal">
-              <p>&copy; 2025 MizeUp. All rights reserved.</p>
+            <div className="flex flex-col lg:flex-row items-center space-y-4 lg:space-y-0 lg:space-x-8">
+              <div className="flex flex-wrap justify-center lg:justify-start gap-x-6 gap-y-2">
+                <a href="#about" className="text-gray-600 hover:text-capri transition-colors text-sm">About</a>
+                <a href="#contact" className="text-gray-600 hover:text-capri transition-colors text-sm">Contact</a>
+                <a href="#" className="text-gray-600 hover:text-capri transition-colors text-sm">Privacy</a>
+                <a href="#" className="text-gray-600 hover:text-capri transition-colors text-sm">Terms</a>
+              </div>
+              <div className="text-gray-500 text-sm text-center lg:text-left">
+                &copy; 2025 MizeUp. All rights reserved.
+              </div>
             </div>
           </div>
         </div>
