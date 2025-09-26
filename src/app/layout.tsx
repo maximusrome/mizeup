@@ -22,34 +22,34 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MizeUp - Maximize Insurance Reimbursement for Therapists",
-  description: "MizeUp helps solo practice therapists streamline insurance billing, reduce administrative burden, and focus on what matters most - your patients. Maximize your reimbursement rates today.",
-  keywords: [
-    "therapy billing",
-    "insurance reimbursement", 
-    "therapist practice management",
-    "solo practice",
-    "healthcare billing software",
-    "automated billing",
-    "therapy practice revenue"
-  ],
-  authors: [{ name: "MizeUp" }],
-  creator: "MizeUp",
-  publisher: "MizeUp",
-  openGraph: {
-    title: "MizeUp - Maximize Insurance Reimbursement for Therapists",
-    description: "Streamline insurance billing and reduce administrative burden for solo practice therapists. Focus on what matters most - your patients.",
-    type: "website",
-    siteName: "MizeUp",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "MizeUp - Maximize Insurance Reimbursement for Therapists",
-    description: "Streamline insurance billing and reduce administrative burden for solo practice therapists.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  // description: "MizeUp helps solo practice therapists streamline insurance billing, reduce administrative burden, and focus on what matters most - your patients. Maximize your reimbursement rates today.",
+  // keywords: [
+  //   "therapy billing",
+  //   "insurance reimbursement", 
+  //   "therapist practice management",
+  //   "solo practice",
+  //   "healthcare billing software",
+  //   "automated billing",
+  //   "therapy practice revenue"
+  // ],
+  // authors: [{ name: "MizeUp" }],
+  // creator: "MizeUp",
+  // publisher: "MizeUp",
+  // openGraph: {
+  //   title: "MizeUp - Maximize Insurance Reimbursement for Therapists",
+  //   description: "Streamline insurance billing and reduce administrative burden for solo practice therapists. Focus on what matters most - your patients.",
+  //   type: "website",
+  //   siteName: "MizeUp",
+  // },
+  // twitter: {
+  //   card: "summary_large_image",
+  //   title: "MizeUp - Maximize Insurance Reimbursement for Therapists",
+  //   description: "Streamline insurance billing and reduce administrative burden for solo practice therapists.",
+  // },
+  // robots: {
+  //   index: true,
+  //   follow: true,
+  // },
 };
 
 // ==========================================================================
