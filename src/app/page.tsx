@@ -32,7 +32,7 @@ const Button = ({ children, variant = "primary", className = "", ...props }: {
   children: React.ReactNode; 
   variant?: "primary" | "secondary"; 
   className?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }) => {
   const baseClasses = "px-8 py-4 rounded-full font-semibold text-lg transition-all duration-300";
   const variantClasses = {
