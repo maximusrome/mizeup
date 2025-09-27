@@ -7,19 +7,17 @@
   --charcoal: #2F2F38;
 }
 
-
 body {
-  background: 
+  background:
     radial-gradient(circle at 10% 90%, rgba(0, 191, 255, 0.18) 0%, transparent 60%),
     radial-gradient(circle at 90% 10%, rgba(199, 185, 255, 0.15) 0%, transparent 60%),
-    linear-gradient(135deg, 
-      rgba(253, 251, 247, 0.95) 0%, 
-      rgba(199, 185, 255, 0.12) 20%, 
-      rgba(0, 191, 255, 0.1) 40%, 
+    linear-gradient(135deg,
+      rgba(253, 251, 247, 0.95) 0%,
+      rgba(199, 185, 255, 0.12) 20%,
+      rgba(0, 191, 255, 0.1) 40%,
       rgba(47, 47, 56, 0.08) 60%,
-      rgba(199, 185, 255, 0.1) 80%, 
-      rgba(253, 251, 247, 0.98) 100%
-    );
+      rgba(199, 185, 255, 0.1) 80%,
+      rgba(253, 251, 247, 0.98) 100%);
   color: var(--charcoal);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   min-height: 100vh;
@@ -211,31 +209,49 @@ body {
     padding: 8px 16px;
     font-size: 13px;
   }
-  
+
   .logo {
     font-size: 20px;
   }
 }
 
 @media (max-width: 768px) {
+
   .elegant-container,
   .wide-container,
   .hero-container {
     padding: 0 1rem;
   }
-  
+
   .section-padding {
     padding: 4rem 0;
   }
-  
+
   .section-padding-lg {
     padding: 6rem 0;
   }
 }
 
-.text-charcoal { color: var(--charcoal); }
-.text-capri { color: var(--primary); }
-.text-offwhite { color: var(--offwhite); }
-.bg-capri { background-color: var(--primary); }
-.border-cream { border-color: var(--offwhite); }
-.decoration-capri { text-decoration-color: var(--primary); }
+.text-charcoal {
+  color: var(--charcoal);
+}
+
+.text-capri {
+  color: var(--primary);
+}
+
+.text-offwhite {
+  color: var(--offwhite);
+}
+
+.bg-capri {
+  background-color: var(--primary);
+}
+
+.border-cream {
+  border-color: var(--offwhite);
+}
+
+.decoration-capri {
+  text-decoration-color: var(--primary);
+}

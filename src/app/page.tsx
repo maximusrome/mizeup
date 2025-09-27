@@ -28,9 +28,9 @@ const Card = ({ icon, step, title, description }: { icon?: React.ReactNode; step
   </div>
 );
 
-const Button = ({ children, variant = "primary", className = "", ...props }: { 
-  children: React.ReactNode; 
-  variant?: "primary" | "secondary"; 
+const Button = ({ children, variant = "primary", className = "", ...props }: {
+  children: React.ReactNode;
+  variant?: "primary" | "secondary";
   className?: string;
   [key: string]: unknown;
 }) => {
@@ -39,7 +39,7 @@ const Button = ({ children, variant = "primary", className = "", ...props }: {
     primary: "glass-button text-offwhite blue-gradient glow-button",
     secondary: "glass text-capri hover:bg-cream"
   };
-  
+
   return (
     <button className={`${baseClasses} ${variantClasses[variant]} ${className}`} {...props}>
       {children}
@@ -80,7 +80,7 @@ const steps = [
 
 const trustIndicators = [
   "Trusted by therapists",
-  "HIPAA compliant", 
+  "HIPAA compliant",
   "Built for solo therapists"
 ];
 
@@ -120,7 +120,7 @@ export default function Home() {
             <div className="flex items-center space-x-3">
               <button className="modern-btn btn-secondary">Log In</button>
               <button className="modern-btn btn-primary blue-gradient">Get Started</button>
-              <button 
+              <button
                 onClick={toggleMobileMenu}
                 className="lg:hidden p-2 rounded-lg text-charcoal hover:bg-gray-100 transition-all duration-200 ml-2"
               >
@@ -135,42 +135,42 @@ export default function Home() {
             </div>
           </div>
         </div>
-        
+
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="lg:hidden bg-white border-t border-gray-200 shadow-lg">
             <div className="elegant-container py-6">
               <div className="flex flex-col space-y-4">
-                <a 
-                  href="#features" 
+                <a
+                  href="#features"
                   onClick={closeMobileMenu}
                   className="text-charcoal hover:text-capri transition-colors py-2 pt-6"
                 >
                   Product
                 </a>
-                <a 
-                  href="#how-it-works" 
+                <a
+                  href="#how-it-works"
                   onClick={closeMobileMenu}
                   className="text-charcoal hover:text-capri transition-colors py-2"
                 >
                   How It Works
                 </a>
-                <a 
-                  href="#pricing" 
+                <a
+                  href="#pricing"
                   onClick={closeMobileMenu}
                   className="text-charcoal hover:text-capri transition-colors py-2"
                 >
                   Pricing
                 </a>
-                <a 
-                  href="#about" 
+                <a
+                  href="#about"
                   onClick={closeMobileMenu}
                   className="text-charcoal hover:text-capri transition-colors py-2"
                 >
                   About
                 </a>
-                <a 
-                  href="#contact" 
+                <a
+                  href="#contact"
                   onClick={closeMobileMenu}
                   className="text-charcoal hover:text-capri transition-colors py-2 pb-6"
                 >
@@ -216,8 +216,8 @@ export default function Home() {
 
       {/* Features Section */}
       <Section id="features">
-        <SectionHeader 
-          title="Everything You Need to Streamline Your Practice" 
+        <SectionHeader
+          title="Everything You Need to Streamline Your Practice"
           subtitle="Powerful features designed specifically for solo practice therapists"
         />
         <div className="elegant-grid">
@@ -229,8 +229,8 @@ export default function Home() {
 
       {/* How It Works Section */}
       <Section id="how-it-works">
-        <SectionHeader 
-          title="How It Works" 
+        <SectionHeader
+          title="How It Works"
           subtitle="Get started in minutes and see results immediately"
         />
         <div className="elegant-grid">
@@ -242,8 +242,8 @@ export default function Home() {
 
       {/* Pricing Section */}
       <Section id="pricing">
-        <SectionHeader 
-          title="Ready to Reclaim Your Time?" 
+        <SectionHeader
+          title="Ready to Reclaim Your Time?"
           subtitle="Monthly subscription—free trial coming soon."
         />
         <div className="glass-card p-12 rounded-3xl glow-card text-center">
@@ -257,19 +257,19 @@ export default function Home() {
 
       {/* About Section */}
       <Section id="about">
-        <SectionHeader 
-          title="About Us" 
+        <SectionHeader
+          title="About Us"
           subtitle="Built by therapists, for therapists"
         />
         <div className="glass-card p-12 rounded-3xl glow-card text-center">
           <p className="text-xl text-charcoal mb-8 leading-relaxed">
-            MizeUp was founded with a simple mission: to help solo practice therapists 
-            maximize their insurance reimbursements while reducing administrative burden. 
-            We understand the challenges you face daily—from managing complex billing codes 
+            MizeUp was founded with a simple mission: to help solo practice therapists
+            maximize their insurance reimbursements while reducing administrative burden.
+            We understand the challenges you face daily—from managing complex billing codes
             to keeping up with ever-changing insurance requirements.
           </p>
           <p className="text-lg text-charcoal leading-relaxed">
-            Our platform is designed specifically for therapists, providing smart suggestions 
+            Our platform is designed specifically for therapists, providing smart suggestions
             and automated workflows that save you time and increase your revenue.
           </p>
         </div>
@@ -277,38 +277,18 @@ export default function Home() {
 
       {/* Contact Section */}
       <Section id="contact">
-        <SectionHeader 
-          title="Contact Us" 
-          subtitle="Get in touch with our team"
+        <SectionHeader
+          title="Contact Us"
+          subtitle="Get in touch"
         />
-        <div className="glass-card p-12 rounded-3xl glow-card">
-          <div className="grid md:grid-cols-2 gap-12">
-            <div>
-              <h3 className="text-2xl font-bold text-charcoal mb-6">Get in Touch</h3>
-              <div className="space-y-4">
-                <div className="flex items-center">
-                  <svg className="w-6 h-6 text-capri mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                  <span className="text-charcoal">hello@mizeup.com</span>
-                </div>
-                <div className="flex items-center">
-                  <svg className="w-6 h-6 text-capri mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  <span className="text-charcoal">(555) 123-4567</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold text-charcoal mb-6">Send us a Message</h3>
-              <form className="space-y-4">
-                <input type="text" placeholder="Your Name" className="w-full px-4 py-3 rounded-lg glass border border-cream focus:border-capri focus:outline-none transition-colors" />
-                <input type="email" placeholder="Your Email" className="w-full px-4 py-3 rounded-lg glass border border-cream focus:border-capri focus:outline-none transition-colors" />
-                <textarea placeholder="Your Message" rows={4} className="w-full px-4 py-3 rounded-lg glass border border-cream focus:border-capri focus:outline-none transition-colors resize-none"></textarea>
-                <Button className="w-full">Send Message</Button>
-              </form>
-            </div>
+        <div className="glass-card p-8 rounded-3xl glow-card text-center">
+          <div className="flex items-center justify-center">
+            <svg className="w-5 h-5 text-capri mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <a href="mailto:rome.a.max@gmail.com" className="text-charcoal hover:text-capri transition-colors text-lg font-medium">
+              rome.a.max@gmail.com
+            </a>
           </div>
         </div>
       </Section>
