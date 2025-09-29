@@ -56,7 +56,7 @@ export function ContactForm() {
 
       form.reset();
       setSubmitStatus('success');
-    } catch (error) {
+    } catch {
       setSubmitStatus('error');
     } finally {
       setIsSubmitting(false);
@@ -140,7 +140,7 @@ export function ContactForm() {
           {submitStatus === 'success' && (
             <div className="text-center p-4 bg-primary/10 text-primary rounded-lg">
               <p className="font-medium">Message sent successfully!</p>
-              <p className="text-sm mt-1">We'll get back to you soon.</p>
+              <p className="text-sm mt-1">We&apos;ll get back to you soon.</p>
             </div>
           )}
 

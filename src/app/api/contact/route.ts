@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     const fromEmail = process.env.FROM_EMAIL || 'max@mizeup.com';
     const toEmail = process.env.TO_EMAIL || 'max@mizeup.com';
 
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: fromEmail,
       to: [toEmail],
       subject: `Contact Form: ${subject}`,
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
