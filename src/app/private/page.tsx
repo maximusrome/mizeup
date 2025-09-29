@@ -19,7 +19,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              This is your protected dashboard page. Only authenticated users can see this content.
+              This is your protected dashboard page. Only authenticated users can see this page.
             </p>
           </CardContent>
         </Card>

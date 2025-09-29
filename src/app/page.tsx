@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { ContactForm } from '@/components/ContactForm';
 
 // Data
 const features = [
@@ -30,11 +31,6 @@ const steps = [
   { step: "3", title: "Sync & See Results", description: "Sync your data and see revenue gains on your personalized dashboard." }
 ];
 
-const trustIndicators = [
-  "Trusted by therapists",
-  "HIPAA compliant",
-  "Built for solo therapists"
-];
 
 function HomeContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -132,8 +128,7 @@ function HomeContent() {
             <Card className="glass-card glow-card p-8 md:p-12 rounded-3xl">
               <CardContent className="pt-6">
                 <h1 className="mb-2 leading-tight">
-                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold">Maximize. Optimize.</span>
-                  <span className="block text-foreground text-3xl md:text-4xl lg:text-5xl font-semibold mt-2">Your Therapy Practice.</span>
+                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold">Optimize Your Therapy Practice.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed mt-6">
                   Stop leaving money on the table with hidden billing codes.
@@ -143,16 +138,6 @@ function HomeContent() {
                   <Button size="lg" asChild>
                     <a href="/auth/login?tab=signup">Get Started</a>
                   </Button>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-6 sm:gap-8 text-sm">
-                  {trustIndicators.map((indicator, index) => (
-                    <div key={index} className="flex items-center">
-                      <svg className="w-4 h-4 text-primary mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      {indicator}
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -262,18 +247,23 @@ function HomeContent() {
       <section id="contact" className="py-16">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Contact Us</h2>
-            <p className="text-xl text-muted-foreground">Get in touch</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Contact Us</h2>
+            <p className="text-lg text-muted-foreground">Get in touch with any questions</p>
           </div>
-          <Card className="glass-card glow-card p-8 text-center rounded-3xl">
+          
+          <Card className="glass-card glow-card p-8 md:p-12 text-center rounded-3xl">
             <CardContent className="pt-6">
-              <div className="flex items-center justify-center">
-                <svg className="w-5 h-5 text-primary mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <a href="tel:201-587-4845" className="text-lg font-medium hover:text-primary transition-colors">
-                  201-587-4845
-                </a>
+              <ContactForm />
+              
+              <div className="mt-8 pt-6 border-t border-border/50">
+                <div className="flex items-center justify-center space-x-2">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  <a href="mailto:max@mizeup.com" className="text-muted-foreground hover:text-primary transition-colors">
+                    max@mizeup.com
+                  </a>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -285,7 +275,7 @@ function HomeContent() {
           <div className="flex flex-col lg:flex-row justify-between items-center space-y-6 lg:space-y-0">
             <div className="text-center lg:text-left">
               <h3 className="text-2xl font-bold mb-2 logo-gradient">MizeUp</h3>
-              <p className="text-muted-foreground text-sm">Maximize. Optimize. Your Therapy Practice.</p>
+              <p className="text-muted-foreground text-sm">Optimize Your Therapy Practice.</p>
             </div>
             <div className="text-muted-foreground text-sm text-center lg:text-left">
               &copy; 2025 MizeUp. All rights reserved.
