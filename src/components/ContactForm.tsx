@@ -19,7 +19,6 @@ import {
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Valid email is required'),
-  subject: z.string().min(1, 'Subject is required'),
   message: z.string().min(1, 'Message is required'),
 });
 
@@ -34,7 +33,6 @@ export function ContactForm() {
     defaultValues: {
       name: '',
       email: '',
-      subject: '',
       message: '',
     },
   });
@@ -75,7 +73,7 @@ export function ContactForm() {
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your full name" {...field} />
+                    <Input placeholder="Enter your name" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -88,7 +86,7 @@ export function ContactForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="your.email@example.com" {...field} />
+                    <Input type="email" placeholder="Enter your email" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -98,27 +96,13 @@ export function ContactForm() {
           
           <FormField
             control={form.control}
-            name="subject"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Subject</FormLabel>
-                <FormControl>
-                  <Input placeholder="What's this about?" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          
-          <FormField
-            control={form.control}
             name="message"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Message</FormLabel>
                 <FormControl>
                   <Textarea 
-                    placeholder="Tell us more about your question or feedback..."
+                    placeholder="Ask us a question or share your feedback..."
                     className="min-h-[120px]"
                     {...field} 
                   />
