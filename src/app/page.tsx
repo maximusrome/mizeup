@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -175,7 +175,7 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Contact Us</h2>
-            <p className="text-lg text-muted-foreground">Let's connect! Have any questions or feedback?</p>
+            <p className="text-lg text-muted-foreground">Let&apos;s connect! Open to new opportunities, feedback, and answering your questions.</p>
           </div>
           
           <Card className="glass-card glow-card p-8 md:p-12 text-center rounded-3xl">
