@@ -128,7 +128,7 @@ function HomeContent() {
             <Card className="glass-card glow-card p-8 md:p-12 rounded-3xl">
               <CardContent className="pt-6">
                 <h1 className="mb-2 leading-tight">
-                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold">Optimize Your Therapy Practice.</span>
+                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold">OptiMize Your Therapy Practice.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed mt-6">
                   Stop leaving money on the table with hidden billing codes.
@@ -275,7 +275,7 @@ function HomeContent() {
           <div className="flex flex-col lg:flex-row justify-between items-center space-y-6 lg:space-y-0">
             <div className="text-center lg:text-left">
               <h3 className="text-2xl font-bold mb-2 logo-gradient">MizeUp</h3>
-              <p className="text-muted-foreground text-sm">Optimize Your Therapy Practice.</p>
+              <p className="text-muted-foreground text-sm">OptiMize Your Therapy Practice.</p>
             </div>
             <div className="text-muted-foreground text-sm text-center lg:text-left">
               &copy; 2025 MizeUp. All rights reserved.
