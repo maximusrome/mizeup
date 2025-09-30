@@ -33,7 +33,6 @@ const steps = [
 
 
 function HomeContent() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -46,13 +45,6 @@ function HomeContent() {
     }
   }, [searchParams, router]);
 
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const closeMobileMenu = () => {
-    setIsMobileMenuOpen(false);
-  };
 
   return (
     <div className="min-h-screen">
@@ -62,13 +54,6 @@ function HomeContent() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-8">
               <h1 className="text-2xl font-bold logo-gradient">MizeUp</h1>
-              <div className="hidden lg:flex items-center space-x-6">
-                <a href="#features" className="text-sm font-medium hover:text-primary transition-colors">Product</a>
-                <a href="#how-it-works" className="text-sm font-medium hover:text-primary transition-colors">How It Works</a>
-                <a href="#pricing" className="text-sm font-medium hover:text-primary transition-colors">Pricing</a>
-                <a href="#about" className="text-sm font-medium hover:text-primary transition-colors">About</a>
-                <a href="#contact" className="text-sm font-medium hover:text-primary transition-colors">Contact</a>
-              </div>
             </div>
             <div className="flex items-center space-x-3">
               <Button variant="ghost" asChild>
@@ -77,48 +62,9 @@ function HomeContent() {
               <Button asChild>
                 <a href="/auth/login?tab=signup">Get Started</a>
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleMobileMenu}
-                className="lg:hidden"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isMobileMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
-                </svg>
-              </Button>
             </div>
           </div>
         </div>
-
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden bg-background border-t">
-            <div className="px-8 py-6">
-              <div className="flex flex-col space-y-4">
-                <a href="#features" onClick={closeMobileMenu} className="text-sm font-medium hover:text-primary transition-colors py-2">
-                  Product
-                </a>
-                <a href="#how-it-works" onClick={closeMobileMenu} className="text-sm font-medium hover:text-primary transition-colors py-2">
-                  How It Works
-                </a>
-                <a href="#pricing" onClick={closeMobileMenu} className="text-sm font-medium hover:text-primary transition-colors py-2">
-                  Pricing
-                </a>
-                <a href="#about" onClick={closeMobileMenu} className="text-sm font-medium hover:text-primary transition-colors py-2">
-                  About
-                </a>
-                <a href="#contact" onClick={closeMobileMenu} className="text-sm font-medium hover:text-primary transition-colors py-2">
-                  Contact
-                </a>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
 
       {/* Hero Section */}
@@ -149,8 +95,8 @@ function HomeContent() {
       <section id="features" className="py-16">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Streamline Your Practice</h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Powerful features designed specifically for solo practice therapists</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Optimize Your Practice</h2>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Powerful features designed specifically for independent practice therapists</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
@@ -199,25 +145,6 @@ function HomeContent() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-16">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to Reclaim Your Time?</h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Monthly subscription—free trial coming soon.</p>
-          </div>
-          <Card className="glass-card glow-card p-12 text-center rounded-3xl">
-            <CardContent className="pt-6">
-              <div className="flex justify-center mb-8">
-                <Button size="lg" asChild>
-                  <a href="/auth/login?tab=signup">Sign Up Now</a>
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground">Ready to maximize your practice revenue?</p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
 
       {/* About Section */}
       <section id="about" className="py-16">
@@ -229,8 +156,8 @@ function HomeContent() {
           <Card className="glass-card glow-card p-12 text-center rounded-3xl">
             <CardContent className="pt-6">
               <p className="text-xl mb-8 leading-relaxed">
-                MizeUp was founded with a simple mission: to help solo practice therapists
-                maximize their insurance reimbursements while reducing administrative burden.
+                MizeUp was founded with a simple mission: to help independent practice therapists
+                optimize their insurance reimbursements while reducing administrative burden.
                 We understand the challenges you face daily—from managing complex billing codes
                 to keeping up with ever-changing insurance requirements.
               </p>
@@ -248,7 +175,7 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Contact Us</h2>
-            <p className="text-lg text-muted-foreground">Get in touch with any questions</p>
+            <p className="text-lg text-muted-foreground">Let's connect! Have any questions or feedback?</p>
           </div>
           
           <Card className="glass-card glow-card p-8 md:p-12 text-center rounded-3xl">
@@ -264,6 +191,22 @@ function HomeContent() {
                     max@mizeup.com
                   </a>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      <section className="py-16">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <Card className="glass-card glow-card p-12 text-center rounded-3xl">
+            <CardContent className="pt-6">
+              <h2 className="text-3xl md:text-4xl font-bold mb-8">Ready to <span className="logo-gradient">MizeUp</span> your therapy practice?</h2>
+              <div className="flex justify-center">
+                <Button size="lg" asChild>
+                  <a href="/auth/login?tab=signup">Get Started</a>
+                </Button>
               </div>
             </CardContent>
           </Card>
