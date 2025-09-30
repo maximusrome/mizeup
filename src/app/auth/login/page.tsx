@@ -53,7 +53,7 @@ function AuthPageContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-background py-12 px-4 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Welcome to <span className="logo-gradient">MizeUp</span></CardTitle>
@@ -65,13 +65,13 @@ function AuthPageContent() {
           {urlMessage && (
             <div className={`mb-4 p-3 rounded-md ${
               urlMessage.toLowerCase().includes('success') || urlMessage.toLowerCase().includes('updated')
-                ? 'bg-green-50 border border-green-200'
-                : 'bg-red-50 border border-red-200'
+                ? 'bg-success-light border border-success'
+                : 'bg-destructive-light border border-destructive'
             }`}>
               <p className={`text-sm ${
                 urlMessage.toLowerCase().includes('success') || urlMessage.toLowerCase().includes('updated')
-                  ? 'text-green-800'
-                  : 'text-red-800'
+                  ? 'text-success'
+                  : 'text-destructive'
               }`}>
                 {urlMessage}
               </p>
@@ -107,15 +107,15 @@ function AuthPageContent() {
                   <div className="text-right">
                     <a 
                       href="/auth/reset-password" 
-                      className="text-sm text-blue-600 hover:text-blue-500"
+                      className="text-sm text-info hover:text-info/80"
                     >
                       Forgot password?
                     </a>
                   </div>
                 </div>
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-800">{error}</p>
+                  <div className="p-3 bg-destructive-light border border-destructive rounded-md">
+                    <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
                 <Button type="submit" className="w-full" disabled={isLoginLoading}>
@@ -148,8 +148,8 @@ function AuthPageContent() {
                   />
                 </div>
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-                    <p className="text-sm text-red-800">{error}</p>
+                  <div className="p-3 bg-destructive-light border border-destructive rounded-md">
+                    <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
                 <Button type="submit" className="w-full" disabled={isSignupLoading}>

@@ -3,13 +3,34 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Four core colors - used consistently throughout the app */
+  /* Core brand colors - simplified 4-color system */
   --primary: #00BFFF;
   --secondary: #C7B9FF;
   --offwhite: #FDFBF7;
   --charcoal: #2F2F38;
   
-  /* shadcn/ui design tokens mapped to four-color system */
+  /* Semantic color system */
+  --success: #10B981;
+  --success-foreground: #FFFFFF;
+  --success-light: #D1FAE5;
+  --success-border: #A7F3D0;
+  
+  --warning: #F59E0B;
+  --warning-foreground: #FFFFFF;
+  --warning-light: #FEF3C7;
+  --warning-border: #FDE68A;
+  
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --destructive-light: #FEE2E2;
+  --destructive-border: #FECACA;
+  
+  --info: #3B82F6;
+  --info-foreground: #FFFFFF;
+  --info-light: #DBEAFE;
+  --info-border: #BFDBFE;
+  
+  /* Design system tokens */
   --radius: 0.625rem;
   --background: var(--offwhite);
   --foreground: var(--charcoal);
@@ -23,8 +44,6 @@
   --muted-foreground: hsl(215.4 16.3% 46.9%);
   --accent: var(--secondary);
   --accent-foreground: var(--charcoal);
-  --destructive: hsl(0 84.2% 60.2%);
-  --destructive-foreground: hsl(210 40% 98%);
   --border: hsl(214.3 31.8% 91.4%);
   --input: hsl(214.3 31.8% 91.4%);
   --ring: var(--primary);
@@ -102,6 +121,12 @@
   --sidebar-primary-foreground: var(--charcoal);
   --sidebar-accent-foreground: var(--charcoal);
   --sidebar-border: hsl(217.2 32.6% 17.5%);
+  
+  /* Dark mode semantic colors */
+  --success-light: rgba(16, 185, 129, 0.1);
+  --warning-light: rgba(245, 158, 11, 0.1);
+  --destructive-light: rgba(239, 68, 68, 0.1);
+  --info-light: rgba(59, 130, 246, 0.1);
 }
 
 /* Logo gradient styling */
@@ -224,4 +249,77 @@ section[id] {
 
 .glow-card {
   box-shadow: 0 8px 28px 0 rgba(0, 191, 255, 0.14);
+}
+
+/* Semantic color utility classes */
+.bg-success {
+  background-color: var(--success);
+  color: var(--success-foreground);
+}
+
+.bg-success-light {
+  background-color: var(--success-light);
+  color: var(--success);
+}
+
+.border-success {
+  border-color: var(--success-border);
+}
+
+.text-success {
+  color: var(--success);
+}
+
+.bg-warning {
+  background-color: var(--warning);
+  color: var(--warning-foreground);
+}
+
+.bg-warning-light {
+  background-color: var(--warning-light);
+  color: var(--warning);
+}
+
+.border-warning {
+  border-color: var(--warning-border);
+}
+
+.text-warning {
+  color: var(--warning);
+}
+
+.bg-destructive {
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+.bg-destructive-light {
+  background-color: var(--destructive-light);
+  color: var(--destructive);
+}
+
+.border-destructive {
+  border-color: var(--destructive-border);
+}
+
+.text-destructive {
+  color: var(--destructive);
+}
+
+.bg-info {
+  background-color: var(--info);
+  color: var(--info-foreground);
+}
+
+.bg-info-light {
+  background-color: var(--info-light);
+  color: var(--info);
+}
+
+.border-info {
+  border-color: var(--info-border);
+}
+
+.text-info {
+  color: var(--info);
 }

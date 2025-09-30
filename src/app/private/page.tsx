@@ -83,7 +83,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <PrivateNavbar />
       <div className="py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
@@ -135,26 +135,26 @@ export default function DashboardPage() {
                     </div>
                     
                     {question.answer === true && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+                      <div className="bg-success-light border border-success rounded-lg p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <span className="font-semibold text-green-800">Code: {question.code}</span>
-                            <span className="mx-2 text-green-600">•</span>
-                            <span className="text-green-700">{question.description}</span>
+                            <span className="font-semibold text-success">Code: {question.code}</span>
+                            <span className="mx-2 text-success">•</span>
+                            <span className="text-success">{question.description}</span>
                           </div>
-                          <span className="font-bold text-green-800">{question.reimbursement}</span>
+                          <span className="font-bold text-success">{question.reimbursement}</span>
                         </div>
                         
                         <div className="space-y-2">
-                          <p className="text-sm font-medium text-green-800">Copy for TherapyNotes Objective:</p>
-                          <div className="bg-white border border-green-300 rounded p-3 text-sm">
-                            <p className="text-gray-700 leading-relaxed">{question.objectiveText}</p>
+                          <p className="text-sm font-medium text-success">Copy for TherapyNotes Objective:</p>
+                          <div className="bg-card border border-success rounded p-3 text-sm">
+                            <p className="text-foreground leading-relaxed">{question.objectiveText}</p>
                           </div>
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => copyToClipboard(question.objectiveText)}
-                            className="text-green-700 border-green-300 hover:bg-green-50"
+                            className="text-success border-success hover:bg-success-light"
                           >
                             Copy Text
                           </Button>
@@ -180,30 +180,30 @@ export default function DashboardPage() {
           </Card>
 
           {getSelectedCodes().length > 0 && (
-            <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+            <Card className="bg-success-light border-success">
               <CardHeader>
-                <CardTitle className="text-green-800">Additional Revenue Summary</CardTitle>
-                <CardDescription className="text-green-700">
+                <CardTitle className="text-success">Additional Revenue Summary</CardTitle>
+                <CardDescription className="text-success">
                   Based on your responses, you can add these billing codes to increase your reimbursement.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {getSelectedCodes().map((question) => (
-                    <div key={question.id} className="flex justify-between items-center py-2 border-b border-green-200 last:border-b-0">
+                    <div key={question.id} className="flex justify-between items-center py-2 border-b border-success last:border-b-0">
                       <div>
-                        <span className="font-semibold text-green-800">Code {question.code}</span>
-                        <span className="mx-2 text-green-600">•</span>
-                        <span className="text-green-700">{question.description}</span>
+                        <span className="font-semibold text-success">Code {question.code}</span>
+                        <span className="mx-2 text-success">•</span>
+                        <span className="text-success">{question.description}</span>
                       </div>
-                      <span className="font-bold text-green-800">{question.reimbursement}</span>
+                      <span className="font-bold text-success">{question.reimbursement}</span>
                     </div>
                   ))}
                   
-                  <div className="pt-4 border-t border-green-300">
+                  <div className="pt-4 border-t border-success">
                     <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-green-800">Total Additional Revenue:</span>
-                      <span className="text-xl font-bold text-green-800">${getTotalReimbursement()}</span>
+                      <span className="text-lg font-bold text-success">Total Additional Revenue:</span>
+                      <span className="text-xl font-bold text-success">${getTotalReimbursement()}</span>
                     </div>
                   </div>
                 </div>

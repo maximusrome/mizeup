@@ -68,19 +68,19 @@ function HomeContent() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-24 pb-16">
+      <section className="py-16 mt-8">
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center">
-            <Card className="glass-card glow-card p-8 md:p-12 rounded-3xl">
-              <CardContent className="pt-6">
-                <h1 className="mb-2 leading-tight">
-                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold">OptiMize Your Therapy Practice.</span>
+            <Card className="glass-card glow-card p-6 md:p-12 rounded-3xl">
+              <CardContent className="pt-6 px-0">
+                <h1 className="mb-8">
+                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">OptiMize Your Therapy Practice.</span>
                 </h1>
-                <p className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed mt-6">
+                <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
                   Stop leaving money on the table with hidden billing codes.
-                  Earn $500+ additional monthly revenue while saving 3+ hours weekly in tedious documentation.
+                  Earn $500+ monthly while saving 3+ hours weekly on documentation.
                 </p>
-                <div className="flex justify-center mb-8">
+                <div className="flex justify-center">
                   <Button size="lg" asChild>
                     <a href="/auth/login?tab=signup">Get Started</a>
                   </Button>
@@ -100,14 +100,14 @@ function HomeContent() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
-              <Card key={index} className="glass-card glow-card text-center rounded-3xl">
-                <CardHeader>
+              <Card key={index} className="glass-card glow-card text-center rounded-3xl p-4 md:p-6">
+                <CardHeader className="px-0">
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/10">
                     {feature.icon}
                   </div>
                   <CardTitle className="text-xl">{feature.title}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                   <CardDescription className="text-base leading-relaxed">
                     {feature.description}
                   </CardDescription>
@@ -127,14 +127,14 @@ function HomeContent() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {steps.map((step, index) => (
-              <Card key={index} className="glass-card glow-card text-center rounded-3xl">
-                <CardHeader>
+              <Card key={index} className="glass-card glow-card text-center rounded-3xl p-4 md:p-6">
+                <CardHeader className="px-0">
                   <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary text-primary-foreground">
                     <span className="font-bold text-2xl">{step.step}</span>
                   </div>
                   <CardTitle className="text-2xl">{step.title}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                   <CardDescription className="text-base leading-relaxed">
                     {step.description}
                   </CardDescription>
@@ -153,8 +153,8 @@ function HomeContent() {
             <h2 className="text-4xl font-bold mb-4">About Us</h2>
             <p className="text-xl text-muted-foreground">Built by therapists, for therapists</p>
           </div>
-          <Card className="glass-card glow-card p-12 text-center rounded-3xl">
-            <CardContent className="pt-6">
+          <Card className="glass-card glow-card p-6 md:p-12 text-center rounded-3xl">
+            <CardContent className="pt-6 px-0">
               <p className="text-xl mb-8 leading-relaxed">
                 MizeUp was founded with a simple mission: to help independent practice therapists
                 optimize their insurance reimbursements while reducing administrative burden.
@@ -175,11 +175,11 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Contact Us</h2>
-            <p className="text-lg text-muted-foreground">Let&apos;s connect! Open to new opportunities, feedback, and answering your questions.</p>
+            <p className="text-lg text-muted-foreground">Let&apos;s connect! Have any questions or feedback?</p>
           </div>
           
-          <Card className="glass-card glow-card p-8 md:p-12 text-center rounded-3xl">
-            <CardContent className="pt-6">
+          <Card className="glass-card glow-card p-6 md:p-12 text-center rounded-3xl">
+            <CardContent className="pt-6 px-0">
               <ContactForm />
               
               <div className="mt-8 pt-6 border-t border-border/50">
@@ -200,8 +200,8 @@ function HomeContent() {
       {/* Call to Action Section */}
       <section className="py-16">
         <div className="container mx-auto px-4 max-w-6xl">
-          <Card className="glass-card glow-card p-12 text-center rounded-3xl">
-            <CardContent className="pt-6">
+          <Card className="glass-card glow-card p-6 md:p-12 text-center rounded-3xl">
+            <CardContent className="pt-6 px-0">
               <h2 className="text-3xl md:text-4xl font-bold mb-8">Ready to <span className="logo-gradient">MizeUp</span> your therapy practice?</h2>
               <div className="flex justify-center">
                 <Button size="lg" asChild>
