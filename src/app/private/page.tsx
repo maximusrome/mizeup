@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import PrivateNavbar from '@/components/PrivateNavbar'
 
@@ -15,43 +14,185 @@ interface Question {
   objectiveText: string
 }
 
-export default function DashboardPage() {
-  const [questions, setQuestions] = useState<Question[]>([
-    {
-      id: 'q1',
-      text: 'Was there another person besides the client that attended (such as a parent, partner, etc.) that may have increased the communication complexity of the session?',
-      answer: null,
-      code: '90785',
-      reimbursement: '$12.96',
-      description: 'Interactive Complexity',
-      objectiveText: 'Interactive complexity present due to third party involvement requiring management of communication barriers and coordination of care between multiple participants during therapeutic intervention.'
-    },
-    {
-      id: 'q2', 
-      text: 'Did you use play therapy techniques and deem them necessary to make progress in the session?',
-      answer: null,
-      code: '90785',
-      reimbursement: '$12.96',
-      description: 'Interactive Complexity (Play Therapy)',
-      objectiveText: 'Interactive complexity present due to utilization of play therapy techniques requiring specialized therapeutic communication methods and age-appropriate intervention strategies to facilitate therapeutic progress.'
-    },
-    {
-      id: 'q3',
-      text: 'Did the session occur outside your regular office hours?',
-      answer: null,
-      code: '99050',
-      reimbursement: '$8.45',
-      description: 'After Hours Service',
-      objectiveText: 'Services provided outside of regularly scheduled office hours to accommodate client scheduling needs and ensure continuity of care.'
-    }
-  ])
+// Constants
+const INITIAL_QUESTIONS: Question[] = [
+  {
+    id: 'q1',
+    text: 'Did you need to manage maladaptive communication (related to, e.g., high anxiety, high reactivity, repeated questions, or disagreement) among participants that complicates delivery of care?',
+    answer: null,
+    code: '90785',
+    reimbursement: '$12.96',
+    description: 'Interactive Complexity (Maladaptive Communication)',
+    objectiveText: 'Managed maladaptive communication among participants, such as high anxiety, reactivity, repeated questions, or disagreement. This complicated care delivery by impeding therapeutic engagement. Interventions included de-escalation techniques, clarification, and redirection to facilitate session progress.'
+  },
+  {
+    id: 'q2', 
+    text: 'Did the caregiver\'s emotions/behavior interfere with implementation of the treatment plan?',
+    answer: null,
+    code: '90785',
+    reimbursement: '$12.96',
+    description: 'Interactive Complexity (Caregiver Interference)',
+    objectiveText: 'Caregiver emotions and behaviors, such as agitation or disagreement with the plan, interfered with treatment implementation by disrupting focus. Interventions included addressing concerns, mediating dynamics, and refocusing on goals to enable effective care.'
+  },
+  {
+    id: 'q3',
+    text: 'Was there evidence/disclosure of a sentinel event and mandated report to a third party (e.g., abuse or neglect with report to state agency) with initiation of discussion of the sentinel event and/or report with patient and other visit participants?',
+    answer: null,
+    code: '90785',
+    reimbursement: '$12.96',
+    description: 'Interactive Complexity (Sentinel Event)',
+    objectiveText: 'Evidence or disclosure of a sentinel event, such as abuse or neglect, required a mandated report to a third party like a state agency. Discussion of the event and report process involved the patient and participants. This complicated care delivery by shifting focus to crisis response. Interventions included explaining obligations, providing support, and integrating into the plan.'
+  },
+  {
+    id: 'q4',
+    text: 'Did you use play equipment, physical devices, interpreter, or translator to overcome significant language barriers?',
+    answer: null,
+    code: '90785',
+    reimbursement: '$12.96',
+    description: 'Interactive Complexity (Overcoming Barriers)',
+    objectiveText: 'Used play equipment, physical devices, interpreter, or translator to overcome significant language or communication barriers due to the patient\'s limited skills. This complicated care delivery by requiring adapted interaction methods. Interventions included employing these tools to ensure engagement and comprehension.'
+  },
+  {
+    id: 'q5',
+    text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?',
+    answer: null,
+    code: '99050',
+    reimbursement: '$16.58',
+    description: 'After Hours Service',
+    objectiveText: 'This session was provided in the office outside the practice\'s regularly scheduled office hours of Monday-Friday 9:00 AM-5:00 PM, thereby meeting criteria for add-on code 99050.'
+  }
+]
 
-  const handleAnswer = (questionId: string, answer: boolean) => {
+// Helper Components
+const InstructionsSection = ({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) => (
+  <div className="border rounded-lg">
+    <button 
+      onClick={onToggle}
+      className="w-full px-4 py-3 flex items-center justify-between bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-t-lg"
+    >
+      <span className="font-medium">Instructions</span>
+      <span className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+    </button>
+    {isOpen && (
+      <div className="p-4 space-y-3">
+        {[
+          'Answer the questions below for each TherapyNotes progress note',
+          'For each &quot;Yes&quot; answer, add the billing code as an add-on to your service code',
+          'Copy and paste the documentation into Assessments/Additional Notes section',
+          'Complete your progress note as you normally would'
+        ].map((instruction, index) => (
+          <div key={index} className="flex items-center space-x-3">
+            <span className="flex-shrink-0 w-6 h-6 bg-muted text-muted-foreground rounded-full flex items-center justify-center text-sm font-medium">
+              {index + 1}
+            </span>
+            <p className="text-sm text-foreground">{instruction}</p>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)
+
+const QuestionItem = ({ 
+  question, 
+  onToggle 
+}: { 
+  question: Question; 
+  onToggle: () => void 
+}) => (
+  <div>
+    <div 
+      className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded"
+      onClick={onToggle}
+    >
+      <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+        question.answer === true 
+          ? 'border-primary bg-primary' 
+          : 'border-muted-foreground'
+      }`}>
+        {question.answer === true && (
+          <div className="w-2 h-2 rounded-full bg-white"></div>
+        )}
+      </div>
+      <span className="text-sm text-foreground flex-1">{question.text}</span>
+    </div>
+    
+    {question.answer === true && (
+      <div className="ml-6 mb-2">
+        <div className="bg-muted/30 border border-success/30 rounded-lg p-3 mb-2">
+          <p className="text-sm text-foreground">{question.objectiveText}</p>
+        </div>
+        <p className="text-sm text-success font-medium ml-3">Ready to paste</p>
+      </div>
+    )}
+  </div>
+)
+
+const CollapsibleSection = ({ 
+  title, 
+  reimbursement, 
+  isOpen, 
+  onToggle, 
+  children 
+}: { 
+  title: string; 
+  reimbursement: string; 
+  isOpen: boolean; 
+  onToggle: () => void; 
+  children: React.ReactNode 
+}) => (
+  <div className="border rounded-lg">
+    <button 
+      onClick={onToggle}
+      className="w-full px-4 py-3 flex items-center justify-between bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-t-lg"
+    >
+      <div className="flex items-center justify-between w-full">
+        <span className="font-semibold">{title}</span>
+        <span className="bg-background text-success border border-success px-3 py-1 rounded-full text-sm font-bold">
+          {reimbursement}
+        </span>
+      </div>
+      <span className={`ml-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+    </button>
+    
+    {isOpen && (
+      <div className="p-4">
+        <div className="space-y-2">
+          {children}
+        </div>
+      </div>
+    )}
+  </div>
+)
+
+export default function DashboardPage() {
+  const [instructionsOpen, setInstructionsOpen] = useState(true)
+  const [interactiveComplexityOpen, setInteractiveComplexityOpen] = useState(true)
+  const [afterHoursOpen, setAfterHoursOpen] = useState(true)
+  const [questions, setQuestions] = useState<Question[]>(INITIAL_QUESTIONS)
+
+  const handleQuestionToggle = (questionId: string) => {
     setQuestions(prev => 
-      prev.map(q => 
-        q.id === questionId ? { ...q, answer } : q
-      )
+      prev.map(q => {
+        if (q.id === questionId) {
+          // Toggle current question
+          return { ...q, answer: q.answer === true ? null : true }
+        } else {
+          // Deselect all other questions
+          return { ...q, answer: null }
+        }
+      })
     )
+  }
+
+  const handleQuestionSelect = (questionId: string) => {
+    const question = questions.find(q => q.id === questionId)
+    if (question) {
+      handleQuestionToggle(questionId)
+      if (question.answer !== true) {
+        copyToClipboard(question.objectiveText)
+      }
+    }
   }
 
   const resetAnswers = () => {
@@ -63,153 +204,78 @@ export default function DashboardPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      // You could add a toast notification here
     } catch (err) {
       console.error('Failed to copy text: ', err)
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      document.body.appendChild(textArea)
+      textArea.focus()
+      textArea.select()
+      try {
+        document.execCommand('copy')
+      } catch (fallbackErr) {
+        console.error('Fallback copy failed: ', fallbackErr)
+      }
+      document.body.removeChild(textArea)
     }
   }
 
-  const getSelectedCodes = () => {
-    return questions.filter(q => q.answer === true)
-  }
-
-  const getTotalReimbursement = () => {
-    const selectedCodes = getSelectedCodes()
-    const total = selectedCodes.reduce((sum, q) => {
-      const amount = parseFloat(q.reimbursement.replace('$', ''))
-      return sum + amount
-    }, 0)
-    return total.toFixed(2)
-  }
+  const interactiveComplexityQuestions = questions.filter(q => 
+    q.id.startsWith('q') && parseInt(q.id.substring(1)) <= 4
+  )
+  
+  const afterHoursQuestions = questions.filter(q => q.id === 'q5')
 
   return (
     <div className="min-h-screen bg-background">
       <PrivateNavbar />
-      <div className="py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Maximize Your Insurance Reimbursement
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Answer these questions to identify additional billing codes that can increase your reimbursement.
-            </p>
-          </div>
-        
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Session Assessment Questions</CardTitle>
-              <CardDescription>
-                Select Yes or No for each question based on your recent therapy session.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {questions.map((question, index) => (
-                <div key={question.id} className="space-y-3">
-                  <div className="flex items-start space-x-3">
-                    <span className="flex-shrink-0 w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center text-sm font-medium">
-                      {index + 1}
-                    </span>
-                    <p className="text-sm font-medium leading-relaxed pt-1">
-                      {question.text}
-                    </p>
-                  </div>
-                  <div className="ml-11 space-y-3">
-                    <div className="flex space-x-3">
-                      <Button
-                        variant={question.answer === true ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleAnswer(question.id, true)}
-                        className="min-w-16"
-                      >
-                        Yes
-                      </Button>
-                      <Button
-                        variant={question.answer === false ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleAnswer(question.id, false)}
-                        className="min-w-16"
-                      >
-                        No
-                      </Button>
-                    </div>
-                    
-                    {question.answer === true && (
-                      <div className="bg-success-light border border-success rounded-lg p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-semibold text-success">Code: {question.code}</span>
-                            <span className="mx-2 text-success">•</span>
-                            <span className="text-success">{question.description}</span>
-                          </div>
-                          <span className="font-bold text-success">{question.reimbursement}</span>
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-success">Copy for TherapyNotes Objective:</p>
-                          <div className="bg-card border border-success rounded p-3 text-sm">
-                            <p className="text-foreground leading-relaxed">{question.objectiveText}</p>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyToClipboard(question.objectiveText)}
-                            className="text-success border-success hover:bg-success-light"
-                          >
-                            Copy Text
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              <div className="pt-4 border-t flex justify-between items-center">
-                <Button variant="ghost" onClick={resetAnswers}>
-                  Reset All
-                </Button>
-                <Button 
-                  disabled={questions.some(q => q.answer === null)}
-                  className="min-w-32"
-                >
-                  Generate Codes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="pt-20 pb-12">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="mb-6 space-y-4">
+            <InstructionsSection 
+              isOpen={instructionsOpen} 
+              onToggle={() => setInstructionsOpen(!instructionsOpen)} 
+            />
 
-          {getSelectedCodes().length > 0 && (
-            <Card className="bg-success-light border-success">
-              <CardHeader>
-                <CardTitle className="text-success">Additional Revenue Summary</CardTitle>
-                <CardDescription className="text-success">
-                  Based on your responses, you can add these billing codes to increase your reimbursement.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {getSelectedCodes().map((question) => (
-                    <div key={question.id} className="flex justify-between items-center py-2 border-b border-success last:border-b-0">
-                      <div>
-                        <span className="font-semibold text-success">Code {question.code}</span>
-                        <span className="mx-2 text-success">•</span>
-                        <span className="text-success">{question.description}</span>
-                      </div>
-                      <span className="font-bold text-success">{question.reimbursement}</span>
-                    </div>
-                  ))}
-                  
-                  <div className="pt-4 border-t border-success">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-success">Total Additional Revenue:</span>
-                      <span className="text-xl font-bold text-success">${getTotalReimbursement()}</span>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            <CollapsibleSection
+              title="Interactive Complexity +90785"
+              reimbursement="+$12.96"
+              isOpen={interactiveComplexityOpen}
+              onToggle={() => setInteractiveComplexityOpen(!interactiveComplexityOpen)}
+            >
+              {interactiveComplexityQuestions.map((question) => (
+                <QuestionItem
+                  key={question.id}
+                  question={question}
+                  onToggle={() => handleQuestionSelect(question.id)}
+                />
+              ))}
+            </CollapsibleSection>
+
+            <CollapsibleSection
+              title="After Hours +99050"
+              reimbursement="+$16.58"
+              isOpen={afterHoursOpen}
+              onToggle={() => setAfterHoursOpen(!afterHoursOpen)}
+            >
+              {afterHoursQuestions.map((question) => (
+                <QuestionItem
+                  key={question.id}
+                  question={question}
+                  onToggle={() => handleQuestionSelect(question.id)}
+                />
+              ))}
+            </CollapsibleSection>
+            
+            <Button 
+              disabled={!questions.some(q => q.answer === true)}
+              onClick={resetAnswers}
+              className="mt-4"
+            >
+              Done & Next
+            </Button>
+          </div>
         </div>
       </div>
     </div>
