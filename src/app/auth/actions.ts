@@ -82,7 +82,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/private')
+  redirect('/private/calendar')
 }
 
 export async function signup(formData: FormData) {
@@ -107,7 +107,7 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/private')
+  redirect('/private/calendar')
 }
 
 export async function updatePassword(formData: FormData) {

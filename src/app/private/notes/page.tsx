@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import PrivateNavbar from '@/components/PrivateNavbar'
+import Sidebar from '@/components/Sidebar'
 
 interface Question {
   id: string
@@ -76,9 +76,9 @@ const InstructionsSection = ({ isOpen, onToggle }: { isOpen: boolean; onToggle: 
     {isOpen && (
       <div className="p-4 space-y-3">
         {[
-          'Answer the questions below for each TherapyNotes progress note',
-          'For each &quot;Yes&quot; answer, add the billing code as an add-on to your service code',
-          'Copy and paste the documentation into Assessments/Additional Notes section',
+          'Select which questions apply for the progress note you are writing',
+          'For each selected question, add the billing code as an add-on to your service code',
+          'Copy and paste the documentation into Assessments/Additional Notes section, edit as needed',
           'Complete your progress note as you normally would'
         ].map((instruction, index) => (
           <div key={index} className="flex items-center space-x-3">
@@ -165,7 +165,7 @@ const CollapsibleSection = ({
   </div>
 )
 
-export default function DashboardPage() {
+export default function NotesPage() {
   const [instructionsOpen, setInstructionsOpen] = useState(true)
   const [interactiveComplexityOpen, setInteractiveComplexityOpen] = useState(true)
   const [afterHoursOpen, setAfterHoursOpen] = useState(true)
@@ -204,8 +204,7 @@ export default function DashboardPage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text)
-    } catch (err) {
-      console.error('Failed to copy text: ', err)
+    } catch {
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = text
@@ -214,8 +213,8 @@ export default function DashboardPage() {
       textArea.select()
       try {
         document.execCommand('copy')
-      } catch (fallbackErr) {
-        console.error('Fallback copy failed: ', fallbackErr)
+      } catch {
+        // Silent fail for copy fallback
       }
       document.body.removeChild(textArea)
     }
@@ -229,52 +228,61 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PrivateNavbar />
-      <div className="pt-20 pb-12">
-        <div className="container mx-auto px-4 max-w-4xl">
-          <div className="mb-6 space-y-4">
-            <InstructionsSection 
-              isOpen={instructionsOpen} 
-              onToggle={() => setInstructionsOpen(!instructionsOpen)} 
-            />
-
-            <CollapsibleSection
-              title="Interactive Complexity +90785"
-              reimbursement="+$12.96"
-              isOpen={interactiveComplexityOpen}
-              onToggle={() => setInteractiveComplexityOpen(!interactiveComplexityOpen)}
-            >
-              {interactiveComplexityQuestions.map((question) => (
-                <QuestionItem
-                  key={question.id}
-                  question={question}
-                  onToggle={() => handleQuestionSelect(question.id)}
-                />
-              ))}
-            </CollapsibleSection>
-
-            <CollapsibleSection
-              title="After Hours +99050"
-              reimbursement="+$16.58"
-              isOpen={afterHoursOpen}
-              onToggle={() => setAfterHoursOpen(!afterHoursOpen)}
-            >
-              {afterHoursQuestions.map((question) => (
-                <QuestionItem
-                  key={question.id}
-                  question={question}
-                  onToggle={() => handleQuestionSelect(question.id)}
-                />
-              ))}
-            </CollapsibleSection>
+      <Sidebar />
+      <div className="pt-16 lg:pt-0 lg:pl-64">
+        <div className="container mx-auto px-4 max-w-6xl">
+          <div className="py-8">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-foreground">Notes</h1>
+              <p className="text-muted-foreground mt-2">
+                Billing documentation and progress note tools
+              </p>
+            </div>
             
-            <Button 
-              disabled={!questions.some(q => q.answer === true)}
-              onClick={resetAnswers}
-              className="mt-4"
-            >
-              Done & Next
-            </Button>
+            <div className="space-y-4">
+              <InstructionsSection 
+                isOpen={instructionsOpen} 
+                onToggle={() => setInstructionsOpen(!instructionsOpen)} 
+              />
+
+              <CollapsibleSection
+                title="Interactive Complexity +90785"
+                reimbursement="+$12.96"
+                isOpen={interactiveComplexityOpen}
+                onToggle={() => setInteractiveComplexityOpen(!interactiveComplexityOpen)}
+              >
+                {interactiveComplexityQuestions.map((question) => (
+                  <QuestionItem
+                    key={question.id}
+                    question={question}
+                    onToggle={() => handleQuestionSelect(question.id)}
+                  />
+                ))}
+              </CollapsibleSection>
+
+              <CollapsibleSection
+                title="After Hours +99050"
+                reimbursement="+$16.58"
+                isOpen={afterHoursOpen}
+                onToggle={() => setAfterHoursOpen(!afterHoursOpen)}
+              >
+                {afterHoursQuestions.map((question) => (
+                  <QuestionItem
+                    key={question.id}
+                    question={question}
+                    onToggle={() => handleQuestionSelect(question.id)}
+                  />
+                ))}
+              </CollapsibleSection>
+              
+              <Button 
+                disabled={!questions.some(q => q.answer === true)}
+                onClick={resetAnswers}
+                className="mt-4"
+              >
+                Done & Next
+              </Button>
+            </div>
           </div>
         </div>
       </div>
