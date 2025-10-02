@@ -25,7 +25,7 @@ export default function SignOutButton() {
       disabled={isLoading}
       className="w-full sm:w-auto"
     >
-      {isLoading ? 'Signing Out...' : 'Sign Out'}
+      {isLoading ? 'Logging Out...' : 'Log Out'}
     </Button>
   )
 }
