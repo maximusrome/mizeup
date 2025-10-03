@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -57,24 +57,23 @@ export default function CalendarPage() {
     return new Date(y, (m || 1) - 1, d || 1)
   }
 
-  // Get fixed week dates (Sun–Sat) based on current offset
+  // Get week dates starting from today based on current offset
   const getWeekDates = () => {
     const today = new Date()
     const todayLocal = getLocalDateString(today)
     const startOfWeek = new Date(today)
-    const dayOfWeek = today.getDay() // 0=Sun
-    startOfWeek.setDate(today.getDate() - dayOfWeek)
-    startOfWeek.setDate(startOfWeek.getDate() + (currentWeekOffset * 7))
+    startOfWeek.setDate(today.getDate() + (currentWeekOffset * 7))
 
     const weekDates = []
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek)
       date.setDate(startOfWeek.getDate() + i)
+      const dateString = getLocalDateString(date)
       weekDates.push({
-        date: getLocalDateString(date),
+        date: dateString,
         dayName: date.toLocaleDateString('en-US', { weekday: 'long' }),
-        isCurrentMonth: date.getMonth() === today.getMonth(),
-        isToday: getLocalDateString(date) === todayLocal
+        isPast: dateString < todayLocal,
+        isToday: dateString === todayLocal
       })
     }
     return weekDates
@@ -82,16 +81,6 @@ export default function CalendarPage() {
 
   const weekDates = getWeekDates()
 
-  // Auto-scroll to today's card on initial load
-  const calendarRef = useRef<HTMLDivElement | null>(null)
-  const scrollToToday = () => {
-    const container = calendarRef.current
-    if (!container) return
-    const todayEl = container.querySelector('[data-today="true"]') as HTMLElement | null
-    if (todayEl) {
-      todayEl.scrollIntoView({ block: 'start', behavior: 'smooth' })
-    }
-  }
 
   // Load sessions from database
   const loadSessions = async () => {
@@ -108,10 +97,6 @@ export default function CalendarPage() {
 
   useEffect(() => {
     loadSessions()
-  }, [])
-
-  useEffect(() => {
-    scrollToToday()
   }, [])
 
   const formatDate = (dateString: string) => {
@@ -181,8 +166,7 @@ export default function CalendarPage() {
                   {(() => {
                     const today = new Date()
                     const startOfWeek = new Date(today)
-                    const dayOfWeek = today.getDay()
-                    startOfWeek.setDate(today.getDate() - dayOfWeek + (currentWeekOffset * 7))
+                    startOfWeek.setDate(today.getDate() + (currentWeekOffset * 7))
                     const endOfWeek = new Date(startOfWeek)
                     endOfWeek.setDate(startOfWeek.getDate() + 6)
                     
@@ -202,10 +186,7 @@ export default function CalendarPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setCurrentWeekOffset(0)
-                    setTimeout(() => scrollToToday(), 100)
-                  }}
+                  onClick={() => setCurrentWeekOffset(0)}
                   className="h-8 px-3 text-xs"
                 >
                   Today
@@ -226,7 +207,6 @@ export default function CalendarPage() {
 
             <div 
               className="space-y-3 pb-6"
-              ref={calendarRef}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
@@ -240,15 +220,21 @@ export default function CalendarPage() {
                   <Card 
                     key={dayData.date} 
                     className={`px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors ${
-                      dayData.isToday ? 'ring-1 ring-primary/30' : ''
-                    } ${!dayData.isCurrentMonth ? 'opacity-50' : ''}`}
-                    data-today={dayData.isToday ? 'true' : undefined}
+                      dayData.isPast ? 'opacity-50' : ''
+                    }`}
                   >
                     <div className="mb-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className={`font-semibold text-lg ${dayData.isToday ? 'text-primary' : ''}`}>
-                          {dayData.dayName} <span className="text-sm text-muted-foreground font-normal">{formattedDate}</span>
-                        </h3>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-lg">
+                              {dayData.dayName} <span className="text-sm text-muted-foreground font-normal">{formattedDate}</span>
+                            </h3>
+                            {dayData.isToday && (
+                              <span className="px-2 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full">
+                                Today
+                              </span>
+                            )}
+                          </div>
                         <Button
                           variant="ghost"
                           size="sm"
