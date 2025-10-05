@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MizeUp",
   description: "Optimize your therapy practice",
+  alternates: {
+    canonical: 'https://mizeup.com/',
+  },
 };
 
 export default function RootLayout({
