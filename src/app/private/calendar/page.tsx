@@ -54,7 +54,7 @@ export default function CalendarPage() {
 
   const parseLocalDateString = (dateString: string) => {
     const [y, m, d] = dateString.split('-').map(Number)
-    return new Date(y, (m || 1) - 1, d || 1)
+    return new Date(y, m - 1, d)
   }
 
   // Get week dates starting from today based on current offset
@@ -120,17 +120,52 @@ export default function CalendarPage() {
   }
 
   const handleSessionSave = (session: Session) => {
-    if (editingSession) {
-      // Update existing session
-      setSessions(prev => prev.map(s => s.id === session.id ? session : s))
-    } else {
-      // Add new session
-      setSessions(prev => [...prev, session])
-    }
+    setSessions(prev => {
+      if (editingSession) {
+        // Update existing session - replace it
+        return prev.map(s => s.id === session.id ? session : s)
+      } else {
+        // Add new session - avoid duplicates
+        const exists = prev.some(s => s.id === session.id)
+        if (exists) {
+          return prev.map(s => s.id === session.id ? session : s)
+        }
+        return [...prev, session]
+      }
+    })
+  }
+
+  const handleSessionSaveMultiple = (newSessions: Session[]) => {
+    setSessions(prev => {
+      if (editingSession) {
+        // For updates/conversions: remove the old session(s) and add new ones
+        // Filter out the editing session by ID
+        const withoutEditing = prev.filter(s => s.id !== editingSession.id)
+        // Add all the new/updated sessions, avoiding duplicates
+        const newSessionIds = new Set(newSessions.map(s => s.id))
+        const withoutDuplicates = withoutEditing.filter(s => !newSessionIds.has(s.id))
+        return [...withoutDuplicates, ...newSessions]
+      } else {
+        // Creating new sessions: just add them, avoiding duplicates
+        const existingIds = new Set(prev.map(s => s.id))
+        const trulyNew = newSessions.filter(s => !existingIds.has(s.id))
+        return [...prev, ...trulyNew]
+      }
+    })
   }
 
   const handleDeleteSession = (sessionId: string) => {
     setSessions(prev => prev.filter(s => s.id !== sessionId))
+  }
+
+  // Refetch sessions when bulk deletions occur
+  const handleBulkDelete = async () => {
+    try {
+      const updatedSessions = await getSessions()
+      setSessions(updatedSessions)
+    } catch (error) {
+      console.error('Error refetching sessions:', error)
+    }
   }
 
   const getSessionsForDate = (date: string) => {
@@ -263,6 +298,7 @@ export default function CalendarPage() {
                             session={session}
                             onEdit={handleEditSession}
                             onDelete={handleDeleteSession}
+                            onBulkDelete={handleBulkDelete}
                           />
                         ))}
                       </div>
@@ -287,6 +323,8 @@ export default function CalendarPage() {
         selectedDate={selectedDate}
         editingSession={editingSession}
         onSave={handleSessionSave}
+        onSaveMultiple={handleSessionSaveMultiple}
+        onBulkDelete={handleBulkDelete}
       />
     </div>
   )

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getSessions, createSession } from '@/lib/db'
+import { getSessions, createSession, createRecurringSessions } from '@/lib/db'
 import type { CreateSessionRequest } from '@/types'
 
 // GET /api/sessions - Get all sessions (optionally filtered by date)
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/sessions - Create new session
+// POST /api/sessions - Create new session (or multiple if recurring)
 export async function POST(request: NextRequest) {
   try {
     const body: CreateSessionRequest = await request.json()
@@ -32,66 +32,30 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Validate date format
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-    if (!dateRegex.test(body.date)) {
-      return NextResponse.json(
-        { error: 'Date must be in YYYY-MM-DD format' },
-        { status: 400 }
-      )
+    if (body.is_recurring) {
+      // Return array of sessions for recurring
+      const sessions = await createRecurringSessions({
+        client_id: body.client_id,
+        date: body.date,
+        start_time: body.start_time,
+        end_time: body.end_time,
+        notes: body.notes,
+        is_recurring: body.is_recurring,
+        recurring_frequency: body.recurring_frequency,
+        recurring_end_date: body.recurring_end_date
+      })
+      return NextResponse.json({ data: sessions }, { status: 201 })
+    } else {
+      // Return single session for non-recurring
+      const session = await createSession({
+        client_id: body.client_id,
+        date: body.date,
+        start_time: body.start_time,
+        end_time: body.end_time,
+        notes: body.notes
+      })
+      return NextResponse.json({ data: session }, { status: 201 })
     }
-    
-    // Validate and normalize time format
-    const normalizeTime = (time: string) => {
-      if (!time) return ''
-      
-      // If time is already in HH:MM format, return as is
-      if (/^\d{2}:\d{2}$/.test(time)) {
-        return time
-      }
-      
-      // If time is in HH:MM:SS format, extract HH:MM
-      if (/^\d{2}:\d{2}:\d{2}$/.test(time)) {
-        return time.substring(0, 5) // Extract first 5 characters (HH:MM)
-      }
-      
-      // If time is in H:MM format, pad with zero
-      if (/^\d{1}:\d{2}$/.test(time)) {
-        return `0${time}`
-      }
-      
-      return time
-    }
-
-    const startTime = normalizeTime(body.start_time)
-    const endTime = normalizeTime(body.end_time)
-
-    // Validate time format after normalization
-    const timeRegex = /^\d{2}:\d{2}$/
-    if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
-      return NextResponse.json(
-        { error: 'Time must be in HH:MM format' },
-        { status: 400 }
-      )
-    }
-    
-    // Validate start time is before end time
-    if (startTime >= endTime) {
-      return NextResponse.json(
-        { error: 'Start time must be before end time' },
-        { status: 400 }
-      )
-    }
-    
-    const session = await createSession({
-      client_id: body.client_id,
-      date: body.date,
-      start_time: startTime,
-      end_time: endTime,
-      notes: body.notes
-    })
-    
-    return NextResponse.json({ data: session }, { status: 201 })
   } catch (error) {
     console.error('Error creating session:', error)
     return NextResponse.json(

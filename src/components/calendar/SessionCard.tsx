@@ -1,25 +1,53 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { deleteSession } from '@/lib/api'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { deleteSession, deleteSessionWithScope } from '@/lib/api'
 import type { Session } from '@/types'
 
 interface SessionCardProps {
   session: Session
   onEdit: (session: Session) => void
   onDelete: (sessionId: string) => void
+  onBulkDelete?: () => void
 }
 
-export default function SessionCard({ session, onEdit, onDelete }: SessionCardProps) {
-  const handleDelete = async () => {
-    if (confirm('Are you sure you want to delete this session?')) {
-      try {
+export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }: SessionCardProps) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteClick = () => {
+    if (session.recurring_group_id) {
+      setShowDeleteDialog(true)
+      } else {
+        // Regular session deletion - no confirmation needed
+        handleDelete('single')
+      }
+  }
+
+  const handleDelete = async (scope: 'single' | 'all_future') => {
+    try {
+      setIsDeleting(true)
+      if (session.recurring_group_id) {
+        await deleteSessionWithScope(session.id, scope)
+        
+        if (scope === 'all_future' && onBulkDelete) {
+          // For all future deletions, refetch all sessions to reflect changes
+          onBulkDelete()
+        } else {
+          onDelete(session.id)
+        }
+      } else {
         await deleteSession(session.id)
         onDelete(session.id)
-      } catch (error) {
-        console.error('Error deleting session:', error)
-        alert('Failed to delete session. Please try again.')
       }
+      setShowDeleteDialog(false)
+    } catch (error) {
+      console.error('Error deleting session:', error)
+      alert('Failed to delete session. Please try again.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -50,6 +78,12 @@ export default function SessionCard({ session, onEdit, onDelete }: SessionCardPr
           <span className="text-sm truncate">
             {session.clients?.name || 'Unknown Client'}
           </span>
+          {session.recurring_group_id && (
+            <svg className="w-3 h-3 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <title>Recurring session</title>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -66,7 +100,7 @@ export default function SessionCard({ session, onEdit, onDelete }: SessionCardPr
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleDelete}
+          onClick={handleDeleteClick}
           className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0"
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,6 +108,56 @@ export default function SessionCard({ session, onEdit, onDelete }: SessionCardPr
           </svg>
         </Button>
       </div>
+      
+      {/* Delete Confirmation Dialog */}
+      {showDeleteDialog && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowDeleteDialog(false)}
+        >
+          <Card 
+            className="w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Delete Session</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="text-muted-foreground hover:text-foreground h-10 w-10 p-0 rounded-full text-lg"
+                >
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This is a recurring session. What would you like to delete?
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => handleDelete('single')}
+                  className="flex-1"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'This Session Only'}
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleDelete('all_future')}
+                  className="flex-1"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : 'All Future Sessions'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -26,6 +26,10 @@ export interface Session {
   notes?: string
   created_at: string
   updated_at: string
+  // Recurring session fields
+  recurring_group_id?: string
+  recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
+  recurring_end_date?: string
   clients?: {
     id: string
     name: string
@@ -57,6 +61,11 @@ export interface CreateSessionRequest {
   start_time: string
   end_time: string
   notes?: string
+  // Recurring session fields
+  is_recurring?: boolean
+  recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
+  recurring_end_date?: string
+  recurring_group_id?: string
 }
 
 export interface UpdateSessionRequest {
@@ -66,6 +75,12 @@ export interface UpdateSessionRequest {
   end_time: string
   status?: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
   notes?: string
+  // Update scope for recurring sessions
+  update_scope?: 'single' | 'all_future'
+  // Recurring fields for pattern changes
+  recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
+  recurring_end_date?: string
+  recurring_group_id?: string
 }
 
 export interface CreateNoteRequest {
