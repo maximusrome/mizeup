@@ -4,22 +4,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  async redirects() {
-    return [
-      // Redirect www to non-www
-      {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'www.mizeup.com',
-          },
-        ],
-        destination: 'https://mizeup.com/:path*',
-        permanent: true,
-      },
-    ];
-  },
   async rewrites() {
     return [
       {
