@@ -18,20 +18,22 @@ const nextConfig: NextConfig = {
         destination: 'https://mizeup.com/:path*',
         permanent: true,
       },
-      // Redirect http to https
+    ];
+  },
+  async rewrites() {
+    return [
       {
-        source: '/:path*',
-        has: [
-          {
-            type: 'host',
-            value: 'mizeup.com',
-          },
-        ],
-        destination: 'https://mizeup.com/:path*',
-        permanent: true,
+        source: '/ingest/static/:path*',
+        destination: 'https://us-assets.i.posthog.com/static/:path*',
+      },
+      {
+        source: '/ingest/:path*',
+        destination: 'https://us.i.posthog.com/:path*',
       },
     ];
   },
+  // This is required to support PostHog trailing slash API requests
+  skipTrailingSlashRedirect: true,
 };
 
 export default nextConfig;
