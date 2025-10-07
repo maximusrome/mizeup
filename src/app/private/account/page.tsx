@@ -1,5 +1,6 @@
 import Sidebar from '@/components/Sidebar'
 import SignOutButton from '@/app/auth/components/SignOutButton'
+import TherapyNotesCredentials from '@/components/therapynotes/TherapyNotesCredentials'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/utils/supabase/server'
 import { User, Mail, Calendar } from 'lucide-react'
@@ -65,6 +66,9 @@ export default async function AccountPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* TherapyNotes Integration */}
+              <TherapyNotesCredentials />
 
               {/* Log Out Card */}
               <Card>
