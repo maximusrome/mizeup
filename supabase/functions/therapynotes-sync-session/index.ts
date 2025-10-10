@@ -13,7 +13,6 @@ const TN_HEADERS = {
 }
 
 const BASE_COOKIES = 'timezone-offset=-240; cookie-detection=1'
-const TN_VERSION = '2025.8.3.54.496804'
 const TN_RAC = 'BfcAAAAAAAD2ZJ40MeN_Gk1SkcfxW0mJoaa6g0Dn4n6NQfPwUKKXEw'
 
 // Default appointment settings
@@ -61,8 +60,7 @@ async function loginToTherapyNotes(username: string, password: string, practiceC
     body: new URLSearchParams({
       practicecode: practiceCode,
       docookiecheck: 'true',
-      correlationid: crypto.randomUUID(),
-      tnv: TN_VERSION
+      correlationid: crypto.randomUUID()
     }).toString(),
     redirect: 'manual'
   })
@@ -82,8 +80,7 @@ async function loginToTherapyNotes(username: string, password: string, practiceC
       username,
       'e-username': btoa(practiceCode),
       twofactorreentryskipfornow: 'false',
-      correlationid: crypto.randomUUID(),
-      tnv: TN_VERSION
+      correlationid: crypto.randomUUID()
     }).toString(),
     redirect: 'manual'
   })
@@ -99,18 +96,17 @@ async function loginToTherapyNotes(username: string, password: string, practiceC
 }
 
 async function searchPatient(clientName: string, cookies: string) {
-  const response = await fetch('https://www.therapynotes.com/app/common/searchforpatient.aspx?msg=100', {
+  const response = await fetch('https://www.therapynotes.com/app/common/searchforpatient.aspx?msg=20', {
     method: 'POST',
     headers: { ...TN_HEADERS, 'Referer': 'https://www.therapynotes.com/app/', 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest' },
     body: new URLSearchParams({
-      msg: '100',
+      msg: '20',
       searchquery: clientName,
       practiceid: '-1',
       assigneduserid: '-1',
       param: JSON.stringify({ ExcludedPatients: [], AssignedPatientsOnlyIfNoSearchTerms: true }),
       correlationid: crypto.randomUUID(),
-      tnrac: TN_RAC,
-      tnv: TN_VERSION
+      tnrac: TN_RAC
     }).toString()
   })
 
@@ -122,11 +118,11 @@ async function createAppointment(patient: any, date: string, startTime: string, 
   const [year, month, day] = date.split('-')
   const [hours, minutes] = startTime.split(':').map(Number)
   
-  const response = await fetch('https://www.therapynotes.com/app/scheduling/savecalendarentry.aspx?msg=61', {
+  const response = await fetch('https://www.therapynotes.com/app/scheduling/savecalendarentry.aspx?msg=25', {
     method: 'POST',
     headers: { ...TN_HEADERS, 'Referer': 'https://www.therapynotes.com/app/', 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest' },
     body: new URLSearchParams({
-      msg: '61',
+      msg: '25',
       entry: JSON.stringify({
         ID: -1,
         Type: 1,
@@ -154,8 +150,7 @@ async function createAppointment(patient: any, date: string, startTime: string, 
       overridewarnings: 'false',
       showtelehealthwarning: 'false',
       correlationid: crypto.randomUUID(),
-      tnrac: TN_RAC,
-      tnv: TN_VERSION
+      tnrac: TN_RAC
     }).toString()
   })
 
