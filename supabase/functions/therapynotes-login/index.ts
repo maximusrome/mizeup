@@ -29,8 +29,7 @@ serve(async (req) => {
         body: new URLSearchParams({
           'practicecode': practiceCode,
           'docookiecheck': 'true',
-          'correlationid': crypto.randomUUID(),
-          'tnv': '2025.8.2.48.324718'
+          'correlationid': crypto.randomUUID()
         }).toString(),
         redirect: 'manual'
       }
@@ -75,8 +74,7 @@ serve(async (req) => {
           'username': username,
           'e-username': btoa(practiceCode),
           'twofactorreentryskipfornow': 'false',
-          'correlationid': crypto.randomUUID(),
-          'tnv': '2025.8.2.48.324718'
+          'correlationid': crypto.randomUUID()
         }).toString(),
         redirect: 'manual'
       }
