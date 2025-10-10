@@ -18,6 +18,8 @@ export default function CalendarPage() {
   const [touchStart, setTouchStart] = useState<number | null>(null)
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
 
   // Swipe gesture handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -172,6 +174,43 @@ export default function CalendarPage() {
     return sessions.filter(session => session.date === date)
   }
 
+  const handleSyncWeek = async () => {
+    const weekDates = getWeekDates().map(d => d.date)
+    const unsyncedSessions = sessions.filter(
+      s => weekDates.includes(s.date) && !s.synced_to_therapynotes
+    )
+
+    if (!unsyncedSessions.length) {
+      setSyncStatus('All sessions already synced')
+      setTimeout(() => setSyncStatus(null), 3000)
+      return
+    }
+
+    setIsSyncing(true)
+    const syncedIds: string[] = []
+
+    for (const [i, session] of unsyncedSessions.entries()) {
+      try {
+        const response = await fetch(`/api/therapynotes/sync-session/${session.id}`, {
+          method: 'POST'
+        })
+        if (response.ok) {
+          syncedIds.push(session.id)
+          setSyncStatus(`Syncing ${i + 1}/${unsyncedSessions.length}...`)
+        }
+      } catch (error) {
+        console.error('Sync error:', error)
+      }
+    }
+
+    setSessions(prev => 
+      prev.map(s => syncedIds.includes(s.id) ? { ...s, synced_to_therapynotes: true } : s)
+    )
+    setIsSyncing(false)
+    setSyncStatus(`✓ ${syncedIds.length} synced`)
+    setTimeout(() => setSyncStatus(null), 3000)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -225,6 +264,22 @@ export default function CalendarPage() {
                   className="h-8 px-3 text-xs"
                 >
                   Today
+                </Button>
+
+                {syncStatus && (
+                  <span className="text-xs text-muted-foreground">
+                    {syncStatus}
+                  </span>
+                )}
+
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleSyncWeek}
+                  disabled={isSyncing}
+                  className="h-8 px-3 text-xs"
+                >
+                  {isSyncing ? 'Syncing...' : 'Sync to TherapyNotes'}
                 </Button>
               </div>
               
