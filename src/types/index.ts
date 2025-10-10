@@ -30,6 +30,7 @@ export interface Session {
   recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
   recurring_end_date?: string
   synced_to_therapynotes?: boolean
+  has_progress_note?: boolean
   clients?: {
     id: string
     name: string
