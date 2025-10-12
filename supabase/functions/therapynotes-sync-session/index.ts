@@ -147,7 +147,7 @@ async function createAppointment(patient: any, date: string, startTime: string, 
         LocationID: DEFAULT_LOCATION_ID,
         WorkLocationId: DEFAULT_LOCATION_ID
       }),
-      overridewarnings: 'false',
+      overridewarnings: 'true',
       showtelehealthwarning: 'false',
       correlationid: crypto.randomUUID(),
       tnrac: TN_RAC

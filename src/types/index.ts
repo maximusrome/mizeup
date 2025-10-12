@@ -22,8 +22,6 @@ export interface Session {
   date: string
   start_time: string
   end_time: string
-  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-  notes?: string
   created_at: string
   updated_at: string
   recurring_group_id?: string
@@ -37,12 +35,53 @@ export interface Session {
   }
 }
 
+export interface ProgressNoteContent {
+  // Billing codes
+  billingCodes?: {
+    code: string
+    text: string
+  }[]
+  // Diagnosis
+  diagnosis?: {
+    code: string
+    description: string
+  }
+  // Mental Status Examination
+  mentalStatus?: Record<string, string>
+  // Risk Assessment
+  riskAssessment?: {
+    patientDeniesRisk: boolean
+    areaOfRisk?: string
+    levelOfRisk?: string
+    intentToAct?: string
+    planToAct?: string
+    meansToAct?: string
+    riskFactors?: string
+    protectiveFactors?: string
+    additionalDetails?: string
+  }
+  // Clinical Content
+  medications?: string
+  subjectiveReport?: string
+  objectiveContent?: string
+  interventions?: string[]
+  treatmentProgress?: string
+  // Assessment & Plan
+  assessment?: string
+  plan?: string
+  // Recommendation
+  recommendation?: {
+    type: string
+    prescribedFrequency: string
+  }
+}
+
 export interface ProgressNote {
   id: string
   therapist_id: string
   session_id: string
-  content: Record<string, unknown> // JSONB content
-  status: 'draft' | 'completed'
+  content: ProgressNoteContent
+  synced_to_therapynotes: boolean
   created_at: string
   updated_at: string
 }
@@ -61,7 +100,6 @@ export interface CreateSessionRequest {
   date: string
   start_time: string
   end_time: string
-  notes?: string
   is_recurring?: boolean
   recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
   recurring_end_date?: string
@@ -73,8 +111,6 @@ export interface UpdateSessionRequest {
   date: string
   start_time: string
   end_time: string
-  status?: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-  notes?: string
   update_scope?: 'single' | 'all_future'
   recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
   recurring_end_date?: string
@@ -88,7 +124,7 @@ export interface CreateNoteRequest {
 
 export interface UpdateNoteRequest {
   content: Record<string, unknown>
-  status?: 'draft' | 'completed'
+  synced_to_therapynotes?: boolean
 }
 
 // API response types
