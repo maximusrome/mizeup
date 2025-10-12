@@ -39,7 +39,6 @@ export async function POST(request: NextRequest) {
         date: body.date,
         start_time: body.start_time,
         end_time: body.end_time,
-        notes: body.notes,
         is_recurring: body.is_recurring,
         recurring_frequency: body.recurring_frequency,
         recurring_end_date: body.recurring_end_date
@@ -51,8 +50,7 @@ export async function POST(request: NextRequest) {
         client_id: body.client_id,
         date: body.date,
         start_time: body.start_time,
-        end_time: body.end_time,
-        notes: body.notes
+        end_time: body.end_time
       })
       return NextResponse.json({ data: session }, { status: 201 })
     }

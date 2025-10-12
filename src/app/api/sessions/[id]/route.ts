@@ -42,8 +42,6 @@ export async function PUT(
       date: body.date,
       start_time: body.start_time,
       end_time: body.end_time,
-      status: body.status,
-      notes: body.notes,
       update_scope: body.update_scope,
       recurring_frequency: body.recurring_frequency,
       recurring_end_date: body.recurring_end_date,

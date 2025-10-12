@@ -28,7 +28,6 @@ const sessionSchema = z.object({
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
   date: z.string().min(1, 'Date is required'),
-  notes: z.string().optional(),
   // Recurring fields
   recurringFrequency: z.string().optional(),
   recurringEndDate: z.string().optional(),
@@ -74,7 +73,6 @@ export default function SessionModal({
     date: string
     start_time: string
     end_time: string
-    notes?: string
     recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
     recurring_end_date?: string
   }
@@ -88,7 +86,6 @@ export default function SessionModal({
       startTime: '13:00',
       endTime: '14:00',
       date: selectedDate,
-      notes: '',
       recurringFrequency: undefined,
       recurringEndDate: '',
     },
@@ -109,7 +106,6 @@ export default function SessionModal({
         startTime: editingSession.start_time,
         endTime: editingSession.end_time,
         date: editingSession.date,
-        notes: editingSession.notes || '',
         recurringFrequency: editingSession.recurring_frequency || undefined,
         recurringEndDate: editingSession.recurring_end_date || '',
       })
@@ -120,7 +116,6 @@ export default function SessionModal({
         startTime: '13:00',
         endTime: '14:00',
         date: selectedDate,
-        notes: '',
         recurringFrequency: undefined,
         recurringEndDate: '',
       })
@@ -163,7 +158,6 @@ export default function SessionModal({
         date: sessionData.date,
         start_time: sessionData.start_time,
         end_time: sessionData.end_time,
-        notes: sessionData.notes,
         update_scope: 'single',
         recurring_frequency: undefined,
         recurring_end_date: undefined,
@@ -191,7 +185,6 @@ export default function SessionModal({
         date: sessionData.date,
         start_time: sessionData.start_time,
         end_time: sessionData.end_time,
-        notes: sessionData.notes,
         is_recurring: true,
         recurring_frequency: sessionData.recurring_frequency,
         recurring_end_date: sessionData.recurring_end_date
@@ -214,7 +207,6 @@ export default function SessionModal({
         date: sessionData.date,
         start_time: sessionData.start_time,
         end_time: sessionData.end_time,
-        notes: sessionData.notes,
         update_scope: 'single'
       })
       onSave(sessions[0])
@@ -255,7 +247,6 @@ export default function SessionModal({
         date: data.date,
         start_time: data.startTime,
         end_time: data.endTime,
-        notes: data.notes,
         ...(isRecurring && {
           is_recurring: true,
           recurring_frequency: form.getValues('recurringFrequency') as 'weekly' | 'biweekly' | 'every4weeks',
@@ -314,7 +305,6 @@ export default function SessionModal({
         date: pendingSessionData.date,
         start_time: pendingSessionData.start_time,
         end_time: pendingSessionData.end_time,
-        notes: pendingSessionData.notes,
         update_scope: scope,
       }
       

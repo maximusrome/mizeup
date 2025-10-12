@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
       session_id: sessionId,
       therapist_id: user.id,
       content: body.content,
-      status: body.status || 'draft'
+      synced_to_therapynotes: body.synced_to_therapynotes || false
     }, {
       onConflict: 'session_id'
     })

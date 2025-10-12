@@ -204,7 +204,7 @@ export async function getSessions(date?: string): Promise<Session[]> {
       ),
       progress_notes (
         id,
-        status
+        synced_to_therapynotes
       )
     `)
     .eq('therapist_id', user.id)
@@ -222,16 +222,14 @@ export async function getSessions(date?: string): Promise<Session[]> {
   }
   
   // Transform the data to include has_progress_note flag
-  const sessions = (data || []).map((session: Session & { progress_notes?: { id: string; status: string }[] }) => {
-    const hasCompletedNote = session.progress_notes && 
-                             session.progress_notes.length > 0 && 
-                             session.progress_notes[0].status === 'completed'
+  const sessions = (data || []).map((session: Session & { progress_notes?: { id: string; synced_to_therapynotes: boolean }[] }) => {
+    const hasNote = session.progress_notes && session.progress_notes.length > 0
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { progress_notes, ...sessionData } = session
     return {
       ...sessionData,
-      has_progress_note: hasCompletedNote
+      has_progress_note: hasNote
     }
   })
   
@@ -273,8 +271,7 @@ export async function createSession(request: CreateSessionRequest): Promise<Sess
       client_id: request.client_id,
       date: request.date,
       start_time: request.start_time,
-      end_time: request.end_time,
-      notes: request.notes
+      end_time: request.end_time
     })
     .select(`
       *,
@@ -301,8 +298,6 @@ export async function updateSession(id: string, request: UpdateSessionRequest): 
     date: string
     start_time: string
     end_time: string
-    status?: string
-    notes?: string
     updated_at: string
     recurring_frequency?: string | null
     recurring_end_date?: string | null
@@ -312,8 +307,6 @@ export async function updateSession(id: string, request: UpdateSessionRequest): 
     date: request.date,
     start_time: request.start_time,
     end_time: request.end_time,
-    status: request.status,
-    notes: request.notes,
     updated_at: new Date().toISOString()
   }
 
@@ -410,7 +403,6 @@ export async function createRecurringSessions(request: CreateSessionRequest): Pr
           date: sessionDate.toISOString().split('T')[0],
           start_time: request.start_time,
           end_time: request.end_time,
-          notes: request.notes,
           recurring_group_id: recurringGroupId,
           recurring_frequency: request.recurring_frequency,
           recurring_end_date: request.recurring_end_date
@@ -472,8 +464,6 @@ export async function updateSessionWithScope(id: string, request: UpdateSessionR
           client_id: request.client_id,
           start_time: request.start_time,
           end_time: request.end_time,
-          status: request.status,
-          notes: request.notes,
           updated_at: new Date().toISOString()
         })
         .eq('therapist_id', user.id)
@@ -516,7 +506,6 @@ async function regenerateRecurringSessions(id: string, request: UpdateSessionReq
     date: request.date,
     start_time: request.start_time,
     end_time: request.end_time,
-    notes: request.notes,
     is_recurring: true,
     recurring_frequency: request.recurring_frequency || session.recurring_frequency,
     recurring_end_date: request.recurring_end_date || session.recurring_end_date
@@ -627,13 +616,22 @@ export async function updateNote(id: string, request: UpdateNoteRequest): Promis
   const user = await getCurrentUser()
   const supabase = await createSupabaseClient()
   
+  const updateData: {
+    content: Record<string, unknown>
+    synced_to_therapynotes?: boolean
+    updated_at: string
+  } = {
+    content: request.content,
+    updated_at: new Date().toISOString()
+  }
+  
+  if (request.synced_to_therapynotes !== undefined) {
+    updateData.synced_to_therapynotes = request.synced_to_therapynotes
+  }
+  
   const { data, error } = await supabase
     .from('progress_notes')
-    .update({
-      content: request.content,
-      status: request.status,
-      updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', id)
     .eq('therapist_id', user.id)
     .select()
