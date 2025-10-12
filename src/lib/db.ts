@@ -201,6 +201,10 @@ export async function getSessions(date?: string): Promise<Session[]> {
       clients:client_id (
         id,
         name
+      ),
+      progress_notes (
+        id,
+        status
       )
     `)
     .eq('therapist_id', user.id)
@@ -217,7 +221,21 @@ export async function getSessions(date?: string): Promise<Session[]> {
     throw new Error(`Failed to get sessions: ${error.message}`)
   }
   
-  return data || []
+  // Transform the data to include has_progress_note flag
+  const sessions = (data || []).map((session: Session & { progress_notes?: { id: string; status: string }[] }) => {
+    const hasCompletedNote = session.progress_notes && 
+                             session.progress_notes.length > 0 && 
+                             session.progress_notes[0].status === 'completed'
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { progress_notes, ...sessionData } = session
+    return {
+      ...sessionData,
+      has_progress_note: hasCompletedNote
+    }
+  })
+  
+  return sessions
 }
 
 export async function getSession(id: string): Promise<Session> {
