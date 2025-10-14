@@ -201,10 +201,6 @@ export async function getSessions(date?: string): Promise<Session[]> {
       clients:client_id (
         id,
         name
-      ),
-      progress_notes (
-        id,
-        synced_to_therapynotes
       )
     `)
     .eq('therapist_id', user.id)
@@ -221,15 +217,34 @@ export async function getSessions(date?: string): Promise<Session[]> {
     throw new Error(`Failed to get sessions: ${error.message}`)
   }
   
-  // Transform the data to include has_progress_note flag
-  const sessions = (data || []).map((session: Session & { progress_notes?: { id: string; synced_to_therapynotes: boolean }[] }) => {
-    const hasNote = session.progress_notes && session.progress_notes.length > 0
+  // Get all session IDs
+  const sessionIds = (data || []).map(s => s.id)
+  
+  // Fetch progress notes for all sessions
+  const { data: progressNotes } = await supabase
+    .from('progress_notes')
+    .select('id, session_id, synced_to_therapynotes')
+    .in('session_id', sessionIds)
+    .eq('therapist_id', user.id)
+  
+  // Create a map of session_id -> progress_note for quick lookup
+  const notesMap = new Map()
+  if (progressNotes) {
+    progressNotes.forEach(note => {
+      notesMap.set(note.session_id, note)
+    })
+  }
+  
+  // Transform the data to include has_progress_note and progress_note_synced flags
+  const sessions = (data || []).map((session: Session) => {
+    const progressNote = notesMap.get(session.id)
+    const hasNote = !!progressNote
+    const noteIsSynced = hasNote && progressNote.synced_to_therapynotes
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { progress_notes, ...sessionData } = session
     return {
-      ...sessionData,
-      has_progress_note: hasNote
+      ...session,
+      has_progress_note: hasNote,
+      progress_note_synced: noteIsSynced
     }
   })
   

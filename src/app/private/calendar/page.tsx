@@ -20,6 +20,8 @@ export default function CalendarPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [isSyncingNotes, setIsSyncingNotes] = useState(false)
+  const [noteSyncStatus, setNoteSyncStatus] = useState<string | null>(null)
 
   // Swipe gesture handlers
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -211,6 +213,50 @@ export default function CalendarPage() {
     setTimeout(() => setSyncStatus(null), 3000)
   }
 
+  const handleSyncProgressNotes = async () => {
+    const weekDates = getWeekDates().map(d => d.date)
+    const sessionsWithUnsyncedNotes = sessions.filter(
+      s => weekDates.includes(s.date) && 
+          s.synced_to_therapynotes && 
+          s.has_progress_note && 
+          !s.progress_note_synced
+    )
+
+    if (!sessionsWithUnsyncedNotes.length) {
+      setNoteSyncStatus('All progress notes already synced')
+      setTimeout(() => setNoteSyncStatus(null), 3000)
+      return
+    }
+
+    setIsSyncingNotes(true)
+    const syncedIds: string[] = []
+
+    for (const [i, session] of sessionsWithUnsyncedNotes.entries()) {
+      try {
+        const response = await fetch(`/api/therapynotes/sync-progress-note/${session.id}`, {
+          method: 'POST'
+        })
+        if (response.ok) {
+          syncedIds.push(session.id)
+          setNoteSyncStatus(`Syncing notes ${i + 1}/${sessionsWithUnsyncedNotes.length}...`)
+        } else {
+          const errorData = await response.json()
+          setNoteSyncStatus(`Error: ${errorData.error || `HTTP ${response.status}`}`)
+        }
+      } catch (error) {
+        console.error('Progress note sync error:', error)
+        setNoteSyncStatus('Error syncing note')
+      }
+    }
+
+    setSessions(prev => 
+      prev.map(s => syncedIds.includes(s.id) ? { ...s, progress_note_synced: true } : s)
+    )
+    setIsSyncingNotes(false)
+    setNoteSyncStatus(`✓ ${syncedIds.length} notes synced`)
+    setTimeout(() => setNoteSyncStatus(null), 3000)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -272,6 +318,12 @@ export default function CalendarPage() {
                   </span>
                 )}
 
+                {noteSyncStatus && (
+                  <span className="text-xs text-muted-foreground">
+                    {noteSyncStatus}
+                  </span>
+                )}
+
                 <Button
                   variant="default"
                   size="sm"
@@ -280,6 +332,16 @@ export default function CalendarPage() {
                   className="h-8 px-3 text-xs"
                 >
                   {isSyncing ? 'Syncing...' : 'Sync to TherapyNotes'}
+                </Button>
+
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleSyncProgressNotes}
+                  disabled={isSyncingNotes}
+                  className="h-8 px-3 text-xs"
+                >
+                  {isSyncingNotes ? 'Syncing Notes...' : 'Sync Progress Notes'}
                 </Button>
               </div>
               
