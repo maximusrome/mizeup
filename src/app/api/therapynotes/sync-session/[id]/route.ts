@@ -43,10 +43,13 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
 
     await supabase
       .from('sessions')
-      .update({ synced_to_therapynotes: true })
+      .update({ 
+        synced_to_therapynotes: true,
+        therapynotes_appointment_id: data.appointmentId || data.ID
+      })
       .eq('id', id)
 
-    return NextResponse.json({ success: true, appointmentId: data.appointmentId })
+    return NextResponse.json({ success: true, appointmentId: data.appointmentId || data.ID })
 
   } catch (error) {
     return NextResponse.json({ 

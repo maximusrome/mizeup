@@ -28,7 +28,9 @@ export interface Session {
   recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
   recurring_end_date?: string
   synced_to_therapynotes?: boolean
+  therapynotes_appointment_id?: string
   has_progress_note?: boolean
+  progress_note_synced?: boolean
   clients?: {
     id: string
     name: string
@@ -41,11 +43,15 @@ export interface ProgressNoteContent {
     code: string
     text: string
   }[]
-  // Diagnosis
+  // Diagnosis (supports single or array for backward compatibility)
   diagnosis?: {
     code: string
     description: string
   }
+  diagnoses?: {
+    code: string
+    description: string
+  }[]
   // Mental Status Examination
   mentalStatus?: Record<string, string>
   // Risk Assessment

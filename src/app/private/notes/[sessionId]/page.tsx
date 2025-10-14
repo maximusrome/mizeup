@@ -488,10 +488,26 @@ export default function SessionProgressNotePage() {
                           </label>
                         ))}
                       </div>
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                        <Label className="text-sm sm:whitespace-nowrap">Prescribed Frequency:</Label>
-                        <Input value={prescribedFrequency} onChange={(e) => setPrescribedFrequency(e.target.value)} className="flex-1" />
-                      </div>
+                      {recommendation !== 'terminate' && (
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                          <Label className="text-sm sm:whitespace-nowrap">Prescribed Frequency of Treatment *</Label>
+                          <select 
+                            value={prescribedFrequency} 
+                            onChange={(e) => setPrescribedFrequency(e.target.value)}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          >
+                            <option value="As Needed">As Needed</option>
+                            <option value="Twice a Week">Twice a Week</option>
+                            <option value="Weekly">Weekly</option>
+                            <option value="Every 2 Weeks">Every 2 Weeks</option>
+                            <option value="Every 4 Weeks">Every 4 Weeks</option>
+                            <option value="Every Month">Every Month</option>
+                            <option value="Every 2 Months">Every 2 Months</option>
+                            <option value="Every 3 Months">Every 3 Months</option>
+                            <option value="Every 4 Months">Every 4 Months</option>
+                          </select>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
