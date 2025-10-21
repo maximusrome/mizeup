@@ -1,0 +1,11 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow private pages
+Disallow: /private/
+Disallow: /auth/
+Disallow: /api/
+
+Sitemap: https://www.mizeup.com/sitemap.xml
+

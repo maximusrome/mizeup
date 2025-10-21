@@ -1,0 +1,29 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "mizeup.com"
+        }
+      ],
+      "destination": "https://www.mizeup.com",
+      "permanent": true,
+      "statusCode": 301
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "mizeup.com"
+        }
+      ],
+      "destination": "https://www.mizeup.com/:path*",
+      "permanent": true,
+      "statusCode": 301
+    }
+  ]
+}
+
