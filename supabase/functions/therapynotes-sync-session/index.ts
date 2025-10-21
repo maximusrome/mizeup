@@ -38,7 +38,12 @@ serve(async (req) => {
     const appointment = await createAppointment(patient, date, startTime, cookies)
 
     return new Response(
-      JSON.stringify({ success: true, appointmentId: appointment.ID }),
+      JSON.stringify({ 
+        success: true, 
+        appointmentId: appointment.ID,
+        encryptedId: appointment.EncryptedID,
+        patientEncryptedId: patient.EncryptedID  // Also return patient encrypted ID
+      }),
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )
 
