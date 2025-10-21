@@ -11,6 +11,7 @@ export interface Client {
   id: string
   therapist_id: string
   name: string
+  therapynotes_encrypted_patient_id?: string
   created_at: string
   updated_at: string
 }
@@ -28,7 +29,8 @@ export interface Session {
   recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
   recurring_end_date?: string
   synced_to_therapynotes?: boolean
-  therapynotes_appointment_id?: string
+  therapynotes_calendar_entry_id?: string
+  therapynotes_encrypted_calendar_entry_id?: string
   has_progress_note?: boolean
   progress_note_synced?: boolean
   clients?: {
