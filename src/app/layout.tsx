@@ -13,10 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MizeUp",
-  description: "Optimize your therapy practice",
+  title: "MizeUp - OptiMize Your Therapy Practice",
+  description: "Stop leaving money on the table with hidden billing codes. Earn $500+ monthly while saving 3+ hours weekly on documentation.",
+  metadataBase: new URL('https://www.mizeup.com'),
   alternates: {
-    canonical: 'https://mizeup.com/',
+    canonical: '/',
   },
 };
 

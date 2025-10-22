@@ -2,88 +2,446 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const CONFIG = {
   cors: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' },
-  headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36', 'Origin': 'https://www.therapynotes.com' },
+  headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36', 'Origin': 'https://www.therapynotes.com' },
   cookies: 'timezone-offset=-240; cookie-detection=1',
   rac: 'BfcAAAAAAAD2ZJ40MeN_Gk1SkcfxW0mJoaa6g0Dn4n6NQfPwUKKXEw',
-  metadata: "eyJOb3RlVGVtcGxhdGVJZCI6IjUiLCJDdXN0b21Gb3JtSWQiOiIiLCJDdXN0b21Gb3JtVmVyc2lvbklkIjoiIiwiRm9ybUNvbnRleHQiOiIzIiwiQ2FsZW5kYXJFbnRyeUlkIjoiMTA5MDAzODI4NSIsIkdldE5vdGVSZXF1ZXN0Ijp7Ik5vdGVUeXBlIjo0LCJVc2VySWQiOjYzMjM3LCJQYXRpZW50SWQiOjIxOTA2OTcsIkNhbGVuZGFyRW50cnlJZCI6MTA5MDAzODI4NSwiTm90ZUlkIjpudWxsLCJOb3RlUmV2aXNpb24iOm51bGwsIklzRWRpdGluZyI6dHJ1ZSwiTm90ZVRlbXBsYXRlIjpudWxsLCJDdXN0b21Gb3JtSWQiOm51bGwsIkN1c3RvbUZvcm1WZXJzaW9uSWQiOm51bGwsIklwQWRkcmVzcyI6IjE3NC4xOTYuMTk3LjI0OCIsIldhc1NhdmVkIjpmYWxzZSwiSXNHcm91cE5vdGVXb3JrZmxvdyI6ZmFsc2V9fQbZETShBvcHiJvBvuruLQXsDevdZrAVJ0X6OWmwpgMl"
+  version: '2025.8.7.74.275312'
 }
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CONFIG.cors })
   
   try {
-    const { username, password, practiceCode, patientId, calendarEntryId, sessionDate, sessionStartTime, sessionDuration, progressNoteContent, clientName } = await req.json()
+    const { username, password, practiceCode, calendarEntryId, encryptedCalendarEntryId, encryptedPatientId, sessionDate, sessionStartTime } = await req.json()
     
-    const { accessToken, sessionId, userId, practiceId } = await loginToTherapyNotes(username, password, practiceCode)
+    if (!calendarEntryId || !encryptedCalendarEntryId || !encryptedPatientId || !sessionDate || !sessionStartTime) {
+      throw new Error('Missing required parameters')
+    }
+    
+    // Login ONCE for all operations
+    const { accessToken, sessionId } = await loginToTherapyNotes(username, password, practiceCode)
     if (!accessToken) throw new Error('Login failed')
     
     const cookies = `${CONFIG.cookies}; access-token=${accessToken}; ASP.NET_SessionId=${sessionId}`
     
-    let finalPatientId = patientId
-    if (!finalPatientId && clientName) {
-      const patient = await searchPatient(clientName, cookies)
-      if (!patient) throw new Error(`Patient not found: ${clientName}`)
-      finalPatientId = patient.ID
+    // Hardcoded IDs from Lauren's TherapyNotes account
+    // TODO: Make these dynamic by storing in database during session/client sync
+    const THERAPIST_DATA = {
+      userId: 63237,
+      practiceId: 36416,
+      patientId: 2190697,
+      locationId: 32291,
+      serviceCodeId: 4217196,
+      treatmentObjectiveId: 2439654,
+      displayName: "Lauren Goorno,LICSW",
+      licenseInfo: {
+        SignerDisplayName: "Lauren Goorno,LICSW, Therapist, License 110916,",
+        SignerLicenseNumber: "110916",
+        SignerTaxonomy: "Clinical Social Worker"
+      }
     }
     
-    const content = progressNoteContent || {}
-    const ms = content.mentalStatus || {}
-    const rec = content.recommendation || {}
-    const diagnoses = content.diagnoses || (content.diagnosis ? [content.diagnosis] : [{"Code":"F10.20","Description":"Alcohol Use Disorder, Severe"},{"Code":"F32.0","Description":"Major Depressive Disorder, Single episode, Mild"}])
+    // Shared fetch headers for all TherapyNotes API calls
+    const apiHeaders = { ...CONFIG.headers, 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest', 'Referer': 'https://www.therapynotes.com/app/' }
     
-    // Build service codes - always 90837, add 90785/99050 if billing codes selected
-    const serviceCodes = [{"Id":4217196,"Code":"90837","Units":1,"IsAddOn":false}]
-    if (content.billingCodes) {
-      const codes = content.billingCodes.map((c: any) => c.code || c.text)
-      if (codes.includes('90785')) serviceCodes.push({"Id":4105110,"Code":"90785","Units":1,"IsAddOn":true})
-      if (codes.includes('99050')) serviceCodes.push({"Id":4183917,"Code":"99050","Units":1,"IsAddOn":true})
+    // Shared NoteAiData (used in both snapshot and final save)
+    const noteAiData = {
+      IsAiEnabled: false,
+      IsTrial: false,
+      IsToneAdjustEnabled: false,
+      NoteAiPromotionData: [
+        { FeatureType: 2, ArePromotionsOffered: false, ArePromotionUsesRemaining: false, PromotionId: null },
+        { FeatureType: 1, ArePromotionsOffered: true, ArePromotionUsesRemaining: true, PromotionId: 1 }
+      ],
+      PsychologyProgressNoteAiData: {
+        IsGenerationEnabled: false,
+        WasGenerated: false,
+        ElementsAllowed: [13000, 13001, 13002, 13003],
+        ElementsEnabled: [13000, 13001, 13002, 13003],
+        ElementsEdited: [],
+        TreatmentApproach: "",
+        SessionSummary: "<p></p>",
+        UseTranscription: false,
+        TranscribedAt: null,
+        Feedback: 0,
+        SessionSummaryFlattenedString: ""
+      },
+      TranscriptionData: {
+        IsAnyRecordingInProgress: false,
+        IsAnyTranscriptionInProgress: false,
+        TotalMinutes: 0,
+        SumNotProcessedTranscriptMinutes: 0,
+        LatestTranscriptionDate: null,
+        TranscriptionQuality: 1,
+        LessThanEightMinutes: true,
+        TranscriptCanBeUsed: false
+      }
     }
     
+    // Shared form header data (used in both snapshot and final save)
+    const formHeaderData = {
+      Title: "Progress Note",
+      DateAndTime: `${sessionDate}T${sessionStartTime}`,
+      AppointmentDate: `${sessionDate}T${sessionStartTime}`,
+      AuthorUserId: THERAPIST_DATA.userId,
+      AuthorDisplayName: THERAPIST_DATA.displayName,
+      ClinicianDisplayName: null,
+      SupervisorId: null,
+      SupervisorDisplayName: "",
+      SupervisorRole: 0,
+      SessionDuration: 60,
+      LocationType: 1,
+      LocationId: THERAPIST_DATA.locationId,
+      ParticipantsType: 1,
+      OtherParticipants: "",
+      ServiceCodes: [{ Id: THERAPIST_DATA.serviceCodeId, Code: "90837", Units: 1, IsAddOn: false }]
+    }
+    
+    // ===== STEP 1: Create autosave snapshot (draft note) =====
+    const encryptedNoteValues = {
+      NoteId: null,
+      NoteRevision: null,
+      PatientId: encryptedPatientId,
+      CalendarEntryId: encryptedCalendarEntryId,
+      CustomFormId: null
+    }
+    
+    const noteAutosaveSnapshot = {
+      NoteInfo: {
+        NoteId: 0,
+        NoteRevision: 0,
+        IsSigned: false,
+        IsNewNote: true,
+        IsNewRevision: false,
+        PermissionsModifier: 1,
+        IsMostRecentRevision: true,
+        IsSignatureRequired: true,
+        DateCreated: new Date().toISOString(),
+        NoteApprovalContext: {
+          IsPendingSupervisorApproval: true,
+          CurrentUserIsSupervisor: false,
+          SupervisorRole: 0,
+          SupervisorReviewStatus: 0,
+          SupervisorDisplayName: "",
+          SupervisorReviewDate: null,
+          SupervisorComments: null,
+          PreviousRevisionRejected: false,
+          PreviousReviewDate: null,
+          PreviousReviewComments: null,
+          PreviousRevisionSupervisorDisplayName: null
+        },
+        PatientSharingSettings: { CanShare: false, RequiresPatientSignature: false },
+        DocumentAccessType: 1,
+        IsNoteVisibilityEditable: false,
+        IsDocument: false,
+        CurrentCustomNoteVersionId: null,
+        NoteBillingInfo: {
+          CanBeSetAsBillable: false,
+          BillableCheckboxLabel: null,
+          IsBillable: false,
+          BillableItemId: null,
+          BillableItemType: null,
+          IsBillableItemPaid: false
+        },
+        NoteRequirement: 3,
+        SharingRequirement: 0,
+        NoteStatus: 1
+      },
+      FormHeaderData: formHeaderData,
+      FormElementValues: [
+        { Value: { Orientation: "", Insights: "", GeneralAppearance: "", JudgmentImpulseControl: "", Dress: "", Memory: "", MotorActivity: "", AttentionConcentration: "", InterviewBehavior: "", ThoughtProcess: "", Speech: "", ThoughtContent: "", Mood: "", Perception: "", Affect: "", FunctionalStatus: "", CognitiveMentalStatus: "", InterpersonalMentalStatus: "" }, FormElementId: 13010, FormElementType: 1005 },
+        { Value: { ParticipantsType: 1, PatientDeniesAllAreasOfRisk: false, RiskAssessments: [{ AreaOfRisk: "", LevelOfRisk: 0, IntentToAct: 0, PlanToAct: 0, MeansToAct: 0, RiskFactors: [], ProtectiveFactors: [], AdditionalDetails: "", NoSafetyIssues: null }] }, FormElementId: 13011, FormElementType: 1004 },
+        { Value: "", FormElementId: 13014, FormElementType: 26 },
+        { Value: "", FormElementId: 13000, FormElementType: 26 },
+        { Value: "", FormElementId: 13001, FormElementType: 26 },
+        { Value: { Interventions: [], Other: "" }, FormElementId: 13005, FormElementType: 1001 },
+        { Value: "", FormElementId: 13002, FormElementType: 26 },
+        { Value: "", FormElementId: 13003, FormElementType: 26 },
+        { Value: { Recommendation: 0, Frequency: "Weekly" }, FormElementId: 13013, FormElementType: 1006 },
+        { Value: { DsmVersion: 5, NoteDiagnoses: [{ Code: "F10.20", Description: "Alcohol Use Disorder, Severe", Axis: null }, { Code: "F32.0", Description: "Major Depressive Disorder, Single episode, Mild", Axis: null }], Explanation: "" }, FormElementId: 13009, FormElementType: 1003 },
+        { Value: { OutcomeMeasureScoreConfiguration: { NoteId: 0, NoteRevision: 0, ClinicianId: 0, ScoreSelection: 1, AvailableOutcomeMeasures: [6, 16, 7, 19, 4, 5, 35, 10, 15, 11, 24, 1, 27, 3, 2, 9, 28, 12, 26, 33, 34, 37, 36, 13, 20, 32, 17, 18, 21, 22, 8, 25, 30, 23, 14, 29, 31, 39, 38, 41, 40, 42, 43, 44, 45], EpisodeOfCareStartDate: "1900-12-31T19:00:00", EpisodeOfCareEndDate: `${sessionDate}T04:01:00`, ShowResultsCategory: false, IsDefaultConfiguration: true, SelectedOutcomeMeasuresInOrder: null, OutcomeMeasuresWithPatientScore: [], LastSaved: null }, OutcomeMeasureScoreAggregates: [] }, FormElementId: 10002, FormElementType: 1009 },
+        { Value: { ObjectivesProgress: [{ Id: THERAPIST_DATA.treatmentObjectiveId, TreatmentObjectiveDescription: "Stay sober and maintain healthy relationships", ProgressDescription: "" }], NoTreatmentPlan: false }, FormElementId: 13008, FormElementType: 1002 },
+        { Value: [{ IsNew: true, SignerHasLicenses: true, DateSigned: null, SignerId: THERAPIST_DATA.userId, SignerSignatureLicenseInfo: THERAPIST_DATA.licenseInfo, SignatureType: 1 }], FormElementId: 10001, FormElementType: 53 }
+      ],
+      NoteAiData: noteAiData
+    }
+    
+    const snapshotResponse = await fetch('https://www.therapynotes.com/app/notes/api/savenoteautosavesnapshot.aspx?msg=7', {
+      method: 'POST',
+      headers: apiHeaders,
+      body: new URLSearchParams({
+        msg: '7',
+        notetype: '4',
+        notetemplateid: '5',
+        customformid: 'null',
+        encryptednotevalues: JSON.stringify(encryptedNoteValues),
+        noteautosavesnapshot: JSON.stringify(noteAutosaveSnapshot),
+        correlationid: crypto.randomUUID(),
+        tnrac: CONFIG.rac,
+        tnv: CONFIG.version
+      })
+    })
+    
+    const snapshotResult = await snapshotResponse.json()
+    if (snapshotResult.Result !== 1) {
+      throw new Error('Autosave snapshot failed: ' + JSON.stringify(snapshotResult))
+    }
+    
+    // ===== STEP 2: Get note to retrieve encrypted metadata =====
+    const getNoteResponse = await fetch('https://www.therapynotes.com/app/notes/api/getnote.aspx?msg=3', {
+      method: 'POST',
+      headers: apiHeaders,
+      body: new URLSearchParams({
+        msg: '3',
+        notetype: '4',
+        isediting: '1',
+        encryptednotevalues: JSON.stringify(encryptedNoteValues),
+        notetemplateid: 'null',
+        customformid: 'null',
+        customformversionid: 'null',
+        wassaved: '0',
+        isgroupnoteworkflow: '0',
+        correlationid: crypto.randomUUID(),
+        tnrac: CONFIG.rac,
+        tnv: CONFIG.version
+      })
+    })
+    
+    const getNoteResult = await getNoteResponse.json()
+    if (getNoteResult.Result !== 1) {
+      throw new Error('GetNote API failed: ' + JSON.stringify(getNoteResult.ValidationMessages || getNoteResult))
+    }
+    
+    const encryptedFormMetadata = getNoteResult.Form?.Data?.EncryptedFormMetadata
+    if (!encryptedFormMetadata) {
+      throw new Error('EncryptedFormMetadata not found in response')
+    }
+    
+    // ===== STEP 3: Extract IP from fetched metadata =====
+    let ipAddress = "66.30.227.195" // Fallback
+    try {
+      const base64 = encryptedFormMetadata.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - encryptedFormMetadata.length % 4) % 4)
+      const decoded = new TextDecoder().decode(Uint8Array.from(atob(base64), c => c.charCodeAt(0)))
+      const json = decoded.substring(0, decoded.lastIndexOf('}') + 1)
+      ipAddress = JSON.parse(json).GetNoteRequest?.IpAddress || ipAddress
+    } catch (e) {
+      console.error('Could not extract IP from metadata, using fallback')
+    }
+    
+    // ===== STEP 4: Save final progress note with metadata =====
     const payload = {
       FormData: {
         FormMetadata: {
-          GetNoteRequest: { NoteType: 4, UserId: userId, PatientId: finalPatientId, CalendarEntryId: calendarEntryId, IsEditing: true, IpAddress: "174.196.197.248", WasSaved: false, IsGroupNoteWorkflow: false },
-          NoteVersion: 5, NoteTemplateId: 5, OwnershipWillBeUpdatedOnSave: false, FormContext: 3, Locale: 1033, PracticeId: practiceId, PatientId: finalPatientId, UserId: userId, CalendarEntryClinicianId: userId,
+          GetNoteRequest: {
+            NoteType: 4,
+            UserId: THERAPIST_DATA.userId,
+            PatientId: THERAPIST_DATA.patientId,
+            CalendarEntryId: calendarEntryId,
+            NoteId: null,
+            NoteRevision: null,
+            IsEditing: true,
+            NoteTemplate: null,
+            CustomFormId: null,
+            CustomFormVersionId: null,
+            IpAddress: ipAddress,  // Must match encrypted metadata signature
+            WasSaved: false,
+            IsGroupNoteWorkflow: false
+          },
+          NoteVersion: 5,
+          NoteTemplateId: 5,
+          CustomFormId: null,
+          CustomFormVersionId: null,
+          OwnershipWillBeUpdatedOnSave: false,
+          FormContext: 3,
+          Locale: 1033,
+          PracticeId: THERAPIST_DATA.practiceId,
+          PatientId: THERAPIST_DATA.patientId,
+          UserId: THERAPIST_DATA.userId,
+          CalendarEntryClinicianId: THERAPIST_DATA.userId,
+          FormTimeZoneInfo: {
+            Abbreviation: "EDT",
+            TimeZoneOffset: -300,
+            ObservesDaylightSavings: true
+          },
           CalendarEntryId: calendarEntryId,
-          PracticeSignatureContext: { PendingPracticeSignatureType: 1, CurrentUserCanSign: true, RequiresSupervisorSignature: false, SupervisorReviewStatus: 4, DefaultLicenseInfo: { SignerDisplayName: "Lauren Goorno,LICSW, Therapist, License #110916" } }, DsmVersion: 0
+          PracticeSignatureContext: {
+            PendingPracticeSignatureType: 1,
+            CurrentUserCanSign: true,
+            RequiresSupervisorSignature: false,
+            SupervisorReviewStatus: 4,
+            DefaultLicenseInfo: {
+              SignerDisplayName: "Lauren Goorno,LICSW, Therapist, License #110916",
+              SignerLicenseNumber: null,
+              SignerTaxonomy: null
+            }
+          },
+          DsmVersion: 0
         },
-        EncryptedFormMetadata: CONFIG.metadata,
+        EncryptedFormMetadata: encryptedFormMetadata,
         FormMacros: {},
-        FormHeaderData: {
-          Title: "Progress Note", DateAndTime: `${sessionDate}T${sessionStartTime}`, AppointmentDate: `${sessionDate}T${sessionStartTime}`, AuthorUserId: userId, AuthorDisplayName: "Lauren Goorno,LICSW",
-          SessionDuration: sessionDuration || 60, LocationType: 1, LocationId: 32291, ParticipantsType: 1, ServiceCodes: serviceCodes
-        },
+        FormHeaderData: formHeaderData,
         FormElementValues: [
-          { Value: { Orientation: ms.orientation || "X3: Oriented to Person, Place, and Time", Insights: ms.insights || "Excellent", GeneralAppearance: ms.generalAppearance || "Appropriate", JudgmentImpulseControl: ms.judgmentImpulse || "Excellent", Dress: ms.dress || "Appropriate", Memory: ms.memory || "Intact", MotorActivity: ms.motorActivity || "Unremarkable", AttentionConcentration: ms.attentionConcentration || "Good", InterviewBehavior: ms.interviewBehavior || "Appropriate", ThoughtProcess: ms.thoughtProcess || "Unremarkable", Speech: ms.speech || "Normal", ThoughtContent: ms.thoughtContent || "Appropriate", Mood: ms.mood || "Euthymic", Perception: ms.perception || "Unremarkable", Affect: ms.affect || "Congruent", FunctionalStatus: ms.functionalStatus || "Intact", CognitiveMentalStatus: "", InterpersonalMentalStatus: "" }, FormElementId: 13010, FormElementType: 1005 },
-          { Value: { ParticipantsType: 1, PatientDeniesAllAreasOfRisk: true, RiskAssessments: [{ AreaOfRisk: "", LevelOfRisk: 0, IntentToAct: 0, PlanToAct: 0, MeansToAct: 0, RiskFactors: [], ProtectiveFactors: [], AdditionalDetails: "", NoSafetyIssues: null }] }, FormElementId: 13011, FormElementType: 1004 },
-          { Value: content.medications || "", FormElementId: 13014, FormElementType: 26 },
-          { Value: content.subjectiveReport || "", FormElementId: 13000, FormElementType: 26 },
-          { Value: content.objectiveContent || "", FormElementId: 13001, FormElementType: 26 },
-          { Value: { Interventions: content.interventions || [], Other: "" }, FormElementId: 13005, FormElementType: 1001 },
-          { Value: content.assessment || "", FormElementId: 13002, FormElementType: 26 },
-          { Value: content.plan || "", FormElementId: 13003, FormElementType: 26 },
-          { Value: { Recommendation: rec.type === 'continue' ? 0 : rec.type === 'change' ? 1 : 2, Frequency: rec.type === 'terminate' ? "" : (rec.prescribedFrequency || "Weekly") }, FormElementId: 13013, FormElementType: 1006 },
-          { Value: { DsmVersion: 5, NoteDiagnoses: diagnoses.map((d: any) => ({ Code: d.code || d.Code, Description: d.description || d.Description, Axis: null })), Explanation: "" }, FormElementId: 13009, FormElementType: 1003 },
-          { Value: { OutcomeMeasureScoreConfiguration: { NoteId: 0, NoteRevision: 0, ClinicianId: 0, ScoreSelection: 1, AvailableOutcomeMeasures: [6,16,7,19,4,5,35,10,15,11,24,1,27,3,2,9,28,12,26,33,34,37,36,13,20,32,17,18,21,22,8,25,30,23,14,29,31,39,38,41,40,42,43,44,45], EpisodeOfCareStartDate: "1900-12-31T19:00:00", EpisodeOfCareEndDate: "2025-10-14T22:01:00", ShowResultsCategory: false, IsDefaultConfiguration: true, SelectedOutcomeMeasuresInOrder: null, OutcomeMeasuresWithPatientScore: [], LastSaved: null }, OutcomeMeasureScoreAggregates: [] }, FormElementId: 10002, FormElementType: 1009 },
-          { Value: { ObjectivesProgress: [{ Id: 2439654, TreatmentObjectiveDescription: "Stay sober and maintain healthy relationships", ProgressDescription: "Progressing" }], NoTreatmentPlan: false }, FormElementId: 13008, FormElementType: 1002 },
-          { Value: [{ IsNew: true, SignerHasLicenses: true, DateSigned: new Date().toISOString().replace(/\.\d{3}Z$/, ''), SignerId: userId, SignerSignatureLicenseInfo: { SignerDisplayName: "Lauren Goorno,LICSW, Therapist, License 110916,", SignerLicenseNumber: "110916", SignerTaxonomy: "Clinical Social Worker" }, SignatureType: 1 }], FormElementId: 10001, FormElementType: 53 }
+          {
+            Value: {
+              Orientation: "X3: Oriented to Person, Place, and Time",
+              Insights: "Excellent",
+              GeneralAppearance: "Appropriate",
+              JudgmentImpulseControl: "Excellent",
+              Dress: "Appropriate",
+              Memory: "Intact",
+              MotorActivity: "Unremarkable",
+              AttentionConcentration: "Good",
+              InterviewBehavior: "Appropriate",
+              ThoughtProcess: "Unremarkable",
+              Speech: "Normal",
+              ThoughtContent: "Appropriate",
+              Mood: "Euthymic",
+              Perception: "Unremarkable",
+              Affect: "Congruent",
+              FunctionalStatus: "Intact",
+              CognitiveMentalStatus: "",
+              InterpersonalMentalStatus: ""
+            },
+            FormElementId: 13010,
+            FormElementType: 1005
+          },
+          {
+            Value: {
+              ParticipantsType: 1,
+              PatientDeniesAllAreasOfRisk: true,
+              RiskAssessments: [
+                {
+                  AreaOfRisk: "",
+                  LevelOfRisk: 0,
+                  IntentToAct: 0,
+                  PlanToAct: 0,
+                  MeansToAct: 0,
+                  RiskFactors: [],
+                  ProtectiveFactors: [],
+                  AdditionalDetails: "",
+                  NoSafetyIssues: null
+                }
+              ]
+            },
+            FormElementId: 13011,
+            FormElementType: 1004
+          },
+          { Value: "<p>m</p>", FormElementId: 13014, FormElementType: 26 },
+          { Value: "<p>s</p>", FormElementId: 13000, FormElementType: 26 },
+          { Value: "<p>o</p>", FormElementId: 13001, FormElementType: 26 },
+          {
+            Value: { Interventions: ["Cognitive Challenging"], Other: "" },
+            FormElementId: 13005,
+            FormElementType: 1001
+          },
+          { Value: "<p>a</p>", FormElementId: 13002, FormElementType: 26 },
+          { Value: "<p>p</p>", FormElementId: 13003, FormElementType: 26 },
+          {
+            Value: { Recommendation: 0, Frequency: "Weekly" },
+            FormElementId: 13013,
+            FormElementType: 1006
+          },
+          {
+            Value: {
+              DsmVersion: 5,
+              NoteDiagnoses: [
+                { Code: "F10.20", Description: "Alcohol Use Disorder, Severe", Axis: null },
+                { Code: "F32.0", Description: "Major Depressive Disorder, Single episode, Mild", Axis: null }
+              ],
+              Explanation: ""
+            },
+            FormElementId: 13009,
+            FormElementType: 1003
+          },
+          {
+            Value: {
+              OutcomeMeasureScoreConfiguration: {
+                NoteId: 0,
+                NoteRevision: 0,
+                ClinicianId: 0,
+                ScoreSelection: 1,
+                  AvailableOutcomeMeasures: [6, 16, 7, 19, 4, 5, 35, 10, 15, 11, 24, 1, 27, 3, 2, 9, 28, 12, 26, 33, 34, 37, 36, 13, 20, 32, 17, 18, 21, 22, 8, 25, 30, 23, 14, 29, 31, 39, 38, 41, 40, 42, 43, 44, 45],
+                  EpisodeOfCareStartDate: "1900-12-31T19:00:00",
+                  EpisodeOfCareEndDate: `${sessionDate}T04:01:00`,
+                ShowResultsCategory: false,
+                IsDefaultConfiguration: true,
+                SelectedOutcomeMeasuresInOrder: null,
+                OutcomeMeasuresWithPatientScore: [],
+                LastSaved: null
+              },
+              OutcomeMeasureScoreAggregates: []
+            },
+            FormElementId: 10002,
+            FormElementType: 1009
+          },
+          {
+            Value: {
+              ObjectivesProgress: [
+                {
+                  Id: THERAPIST_DATA.treatmentObjectiveId,
+                  TreatmentObjectiveDescription: "Stay sober and maintain healthy relationships",
+                  ProgressDescription: "Progressing"
+                }
+              ],
+              NoTreatmentPlan: false
+            },
+            FormElementId: 13008,
+            FormElementType: 1002
+          },
+          {
+            Value: [
+              {
+                IsNew: true,
+                SignatureType: 1,
+                DateSigned: new Date().toISOString().split('.')[0],
+                IsSigned: false,
+                SignerHasLicenses: true,
+                SignerId: THERAPIST_DATA.userId,
+                SignerSignatureLicenseInfo: THERAPIST_DATA.licenseInfo
+              }
+            ],
+            FormElementId: 10001,
+            FormElementType: 53
+          }
         ]
       },
-      PermissionsModifier: 1, IsBillable: false,
-      NoteAiData: { IsAiEnabled: false, IsTrial: false, IsToneAdjustEnabled: false, NoteAiPromotionData: [{ FeatureType: 2, ArePromotionsOffered: false, ArePromotionUsesRemaining: false }, { FeatureType: 1, ArePromotionsOffered: true, ArePromotionUsesRemaining: true, PromotionId: 1 }], PsychologyProgressNoteAiData: { IsGenerationEnabled: false, WasGenerated: false, ElementsAllowed: [13000,13001,13002,13003], ElementsEnabled: [13000,13001,13002,13003], ElementsEdited: [], TreatmentApproach: "", SessionSummary: "<p></p>", UseTranscription: false, TranscribedAt: null, Feedback: 0, SessionSummaryFlattenedString: "" }, TranscriptionData: { IsAnyRecordingInProgress: false, IsAnyTranscriptionInProgress: false, TotalMinutes: 0, SumNotProcessedTranscriptMinutes: 0, LatestTranscriptionDate: null, TranscriptionQuality: 1, LessThanEightMinutes: true, TranscriptCanBeUsed: false } }
+      PermissionsModifier: 1,
+      IsBillable: false,
+      NoteAiData: noteAiData
     }
     
-    const response = await fetch('https://www.therapynotes.com/app/notes/api/savenote.aspx?msg=9', {
-      method: 'POST', headers: { ...CONFIG.headers, 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest' },
-      body: new URLSearchParams({ msg: '9', savenoterequest: JSON.stringify(payload), correlationid: crypto.randomUUID(), tnrac: CONFIG.rac }).toString()
+    const response = await fetch('https://www.therapynotes.com/app/notes/api/savenote.aspx?msg=10', {
+      method: 'POST',
+      headers: apiHeaders,
+      body: new URLSearchParams({
+        msg: '10',
+        savenoterequest: JSON.stringify(payload),
+        correlationid: crypto.randomUUID(),
+        tnrac: CONFIG.rac,
+        tnv: CONFIG.version
+      })
     })
     
-    const result = JSON.parse(await response.text())
+    const responseText = await response.text()
+    
+    // Check if response is HTML (error page)
+    if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+      throw new Error(`TherapyNotes returned error page (Status: ${response.status})`)
+    }
+    
+    const result = JSON.parse(responseText)
+    
+    // Check for API success
+    if (result.Result !== 1) {
+      throw new Error(`TherapyNotes API error: ${JSON.stringify(result)}`)
+    }
+    
+    // Check for form validation errors
     if (result.FormValidationResult && !result.FormValidationResult.IsValid) {
       throw new Error('Note validation failed: ' + JSON.stringify(result.FormValidationResult.Messages))
     }
     
-    return new Response(JSON.stringify({ success: true }), { headers: { ...CONFIG.cors, 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ success: true, result }), { headers: { ...CONFIG.cors, 'Content-Type': 'application/json' } })
     
   } catch (error) {
     console.error('Progress note sync error:', error)
@@ -108,27 +466,7 @@ async function loginToTherapyNotes(username: string, password: string, practiceC
   const accessToken = cookies.find(c => c.includes('access-token='))?.split('=')[1]
   const sessionId = cookies.find(c => c.includes('ASP.NET_SessionId='))?.split('=')[1]
   
-  let userId = 0, practiceId = 0
-  if (accessToken) {
-    try {
-      const payload = JSON.parse(atob(accessToken.split('.')[1]))
-      const userClaims = payload.UserClaim || []
-      for (const claim of userClaims) {
-        if (claim.startsWith('UserId;')) userId = parseInt(claim.split(';')[1])
-        if (claim.startsWith('PracticeId;')) practiceId = parseInt(claim.split(';')[1])
-      }
-    } catch (e) { console.error('Failed to decode access token:', e) }
-  }
-  
-  return { accessToken, sessionId, userId, practiceId }
-}
-
-async function searchPatient(clientName: string, cookies: string) {
-  const response = await fetch('https://www.therapynotes.com/app/common/searchforpatient.aspx?msg=20', {
-    method: 'POST', headers: { ...CONFIG.headers, 'Referer': 'https://www.therapynotes.com/app/', 'Cookie': cookies, 'X-Requested-With': 'XMLHttpRequest' },
-    body: new URLSearchParams({ msg: '20', searchquery: clientName, practiceid: '-1', assigneduserid: '-1', param: JSON.stringify({ ExcludedPatients: [], AssignedPatientsOnlyIfNoSearchTerms: true }), correlationid: crypto.randomUUID(), tnrac: CONFIG.rac }).toString()
-  })
-  return (await response.json()).Matches?.[0] || null
+  return { accessToken, sessionId }
 }
 
 async function hashPassword(password: string) {

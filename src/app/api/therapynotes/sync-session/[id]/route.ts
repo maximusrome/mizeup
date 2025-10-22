@@ -41,15 +41,29 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       return NextResponse.json({ error: data?.error || error?.message || 'Sync failed' }, { status: 500 })
     }
 
+    // Update session with encrypted calendar entry ID
     await supabase
       .from('sessions')
       .update({ 
         synced_to_therapynotes: true,
-        therapynotes_appointment_id: data.appointmentId || data.ID
+        therapynotes_calendar_entry_id: data.appointmentId || data.ID,
+        therapynotes_encrypted_calendar_entry_id: data.encryptedId || data.EncryptedID
       })
       .eq('id', id)
 
-    return NextResponse.json({ success: true, appointmentId: data.appointmentId || data.ID })
+    // Also store patient encrypted ID on client record if provided
+    if (data.patientEncryptedId) {
+      await supabase
+        .from('clients')
+        .update({ therapynotes_encrypted_patient_id: data.patientEncryptedId })
+        .eq('id', session.client_id)
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      appointmentId: data.appointmentId || data.ID,
+      encryptedId: data.encryptedId || data.EncryptedID
+    })
 
   } catch (error) {
     return NextResponse.json({ 

@@ -215,14 +215,11 @@ export default function CalendarPage() {
 
   const handleSyncProgressNotes = async () => {
     const weekDates = getWeekDates().map(d => d.date)
-    const sessionsWithUnsyncedNotes = sessions.filter(
-      s => weekDates.includes(s.date) && 
-          s.synced_to_therapynotes && 
-          s.has_progress_note && 
-          !s.progress_note_synced
+    const unsyncedNotes = sessions.filter(s => 
+      weekDates.includes(s.date) && s.synced_to_therapynotes && s.has_progress_note && !s.progress_note_synced
     )
 
-    if (!sessionsWithUnsyncedNotes.length) {
+    if (!unsyncedNotes.length) {
       setNoteSyncStatus('All progress notes already synced')
       setTimeout(() => setNoteSyncStatus(null), 3000)
       return
@@ -231,29 +228,25 @@ export default function CalendarPage() {
     setIsSyncingNotes(true)
     const syncedIds: string[] = []
 
-    for (const [i, session] of sessionsWithUnsyncedNotes.entries()) {
+    for (const [i, session] of unsyncedNotes.entries()) {
       try {
-        const response = await fetch(`/api/therapynotes/sync-progress-note/${session.id}`, {
-          method: 'POST'
-        })
+        const response = await fetch(`/api/therapynotes/sync-progress-note/${session.id}`, { method: 'POST' })
         if (response.ok) {
           syncedIds.push(session.id)
-          setNoteSyncStatus(`Syncing notes ${i + 1}/${sessionsWithUnsyncedNotes.length}...`)
+          setNoteSyncStatus(`Syncing ${i + 1}/${unsyncedNotes.length}...`)
         } else {
-          const errorData = await response.json()
-          setNoteSyncStatus(`Error: ${errorData.error || `HTTP ${response.status}`}`)
+          const { error } = await response.json()
+          setNoteSyncStatus(`Error: ${error}`)
         }
       } catch (error) {
-        console.error('Progress note sync error:', error)
-        setNoteSyncStatus('Error syncing note')
+        console.error('Sync error:', error)
+        setNoteSyncStatus('Sync failed')
       }
     }
 
-    setSessions(prev => 
-      prev.map(s => syncedIds.includes(s.id) ? { ...s, progress_note_synced: true } : s)
-    )
+    setSessions(prev => prev.map(s => syncedIds.includes(s.id) ? { ...s, progress_note_synced: true } : s))
     setIsSyncingNotes(false)
-    setNoteSyncStatus(`✓ ${syncedIds.length} notes synced`)
+    setNoteSyncStatus(`✓ ${syncedIds.length} synced`)
     setTimeout(() => setNoteSyncStatus(null), 3000)
   }
 
