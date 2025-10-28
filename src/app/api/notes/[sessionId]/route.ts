@@ -30,8 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ses
     .upsert({
       session_id: sessionId,
       therapist_id: user.id,
-      content: body.content,
-      synced_to_therapynotes: body.synced_to_therapynotes || false
+      content: body.content
     }, {
       onConflict: 'session_id'
     })
