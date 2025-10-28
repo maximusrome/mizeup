@@ -111,7 +111,7 @@ export default function TherapyNotesCredentials() {
           )}
         </CardTitle>
         <CardDescription>
-          Connect your TherapyNotes account to sync sessions and progress notes
+          Connect your TherapyNotes account to sync sessions
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

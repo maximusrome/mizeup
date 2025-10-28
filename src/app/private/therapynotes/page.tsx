@@ -78,7 +78,7 @@ export default function TherapyNotesPage() {
             <div className="font-semibold mb-2">📋 What this does:</div>
             <p className="text-gray-700">
               Authenticates with TherapyNotes using your stored credentials. 
-              Once connected, you can sync sessions and progress notes.
+              Once connected, you can sync sessions.
             </p>
           </div>
         </div>
