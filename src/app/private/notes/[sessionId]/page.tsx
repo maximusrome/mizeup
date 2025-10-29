@@ -179,6 +179,7 @@ export default function SessionProgressNotePage() {
   const [questions, setQuestions] = useState(QUESTIONS)
   const [saving, setSaving] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
+  const [validationError, setValidationError] = useState<string | null>(null)
   
   // Progress Note State
   const [diagnosisCode, setDiagnosisCode] = useState('')
@@ -319,6 +320,32 @@ export default function SessionProgressNotePage() {
   }
 
   const save = async () => {
+    // Validation
+    if (!treatmentProgress) {
+      setValidationError('Please select Progress under Treatment Plan Progress.')
+      return
+    }
+
+    if (!plan.trim()) {
+      setValidationError('Please enter a Plan before saving the progress note.')
+      return
+    }
+
+    if (!patientDeniesRisk) {
+      const riskFieldsComplete =
+        !!riskAssessment.areaOfRisk.trim() &&
+        !!riskAssessment.levelOfRisk &&
+        !!riskAssessment.intentToAct &&
+        !!riskAssessment.planToAct &&
+        !!riskAssessment.meansToAct
+
+      if (!riskFieldsComplete) {
+        setValidationError('Please complete the Risk Assessment section or confirm patient denies all areas of risk.')
+        return
+      }
+    }
+
+    setValidationError(null)
     setSaving(true)
     
     // Collect all progress note data
@@ -347,7 +374,35 @@ export default function SessionProgressNotePage() {
       body: JSON.stringify({ content })
     })
     
-    router.push('/private/calendar')
+    // Navigate to the next session if available; otherwise go back to calendar
+    try {
+      const res = await fetch('/api/sessions')
+      if (!res.ok || !session) {
+        router.push('/private/calendar')
+        return
+      }
+      const { data }: { data: Session[] } = await res.json()
+      if (!data) {
+        router.push('/private/calendar')
+        return
+      }
+
+      const currentDateTime = new Date(`${session.date}T${session.start_time}`)
+      const nextUnwritten = data
+        .filter(s => s.id !== session.id)
+        .filter(s => new Date(`${s.date}T${s.start_time}`).getTime() > currentDateTime.getTime())
+        .filter(s => !s.has_progress_note)
+        .sort((a, b) => new Date(`${a.date}T${a.start_time}`).getTime() - new Date(`${b.date}T${b.start_time}`).getTime())
+        [0]
+
+      if (nextUnwritten) {
+        router.push(`/private/notes/${nextUnwritten.id}`)
+      } else {
+        router.push('/private/calendar')
+      }
+    } catch {
+      router.push('/private/calendar')
+    }
   }
 
   const formatSessionDateTime = () => {
@@ -467,7 +522,7 @@ export default function SessionProgressNotePage() {
 
                 {/* Risk Assessment */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Risk Assessment</Label>
+                  <Label className="text-base font-semibold">Risk Assessment *</Label>
                   <label className="flex items-center gap-2">
                     <input type="checkbox" checked={patientDeniesRisk} onChange={(e) => setPatientDeniesRisk(e.target.checked)} className="w-4 h-4 cursor-pointer" />
                     <span className="text-sm cursor-pointer hover:text-primary transition-colors">Patient denies all areas of risk. No contrary clinical indications present.</span>
@@ -479,13 +534,13 @@ export default function SessionProgressNotePage() {
                         value={riskAssessment.areaOfRisk}
                         onChange={(val) => setRiskAssessment(prev => ({ ...prev, areaOfRisk: val }))}
                         placeholder="Enter area of risk..."
-                        label="Area of Risk"
+                        label="Area of Risk *"
                       />
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <div><Label className="text-sm font-medium mb-2 block">Level of Risk</Label><RadioGroup name="levelOfRisk" options={['Low', 'Medium', 'High', 'Imminent']} value={riskAssessment.levelOfRisk} onChange={(val) => setRiskAssessment(prev => ({ ...prev, levelOfRisk: val }))} /></div>
-                        <div><Label className="text-sm font-medium mb-2 block">Intent to Act</Label><RadioGroup name="intentToAct" options={['Yes', 'No', 'Not Applicable']} value={riskAssessment.intentToAct} onChange={(val) => setRiskAssessment(prev => ({ ...prev, intentToAct: val }))} /></div>
-                        <div><Label className="text-sm font-medium mb-2 block">Plan to Act</Label><RadioGroup name="planToAct" options={['Yes', 'No', 'Not Applicable']} value={riskAssessment.planToAct} onChange={(val) => setRiskAssessment(prev => ({ ...prev, planToAct: val }))} /></div>
-                        <div><Label className="text-sm font-medium mb-2 block">Means to Act</Label><RadioGroup name="meansToAct" options={['Yes', 'No', 'Not Applicable']} value={riskAssessment.meansToAct} onChange={(val) => setRiskAssessment(prev => ({ ...prev, meansToAct: val }))} /></div>
+                        <div><Label className="text-sm font-medium mb-2 block">Level of Risk *</Label><RadioGroup name="levelOfRisk" options={['Low', 'Medium', 'High', 'Imminent']} value={riskAssessment.levelOfRisk} onChange={(val) => setRiskAssessment(prev => ({ ...prev, levelOfRisk: val }))} /></div>
+                        <div><Label className="text-sm font-medium mb-2 block">Intent to Act *</Label><RadioGroup name="intentToAct" options={['Yes', 'No', 'Not Applicable']} value={riskAssessment.intentToAct} onChange={(val) => setRiskAssessment(prev => ({ ...prev, intentToAct: val }))} /></div>
+                        <div><Label className="text-sm font-medium mb-2 block">Plan to Act *</Label><RadioGroup name="planToAct" options={['Yes', 'No', 'Not Applicable']} value={riskAssessment.planToAct} onChange={(val) => setRiskAssessment(prev => ({ ...prev, planToAct: val }))} /></div>
+                        <div><Label className="text-sm font-medium mb-2 block">Means to Act *</Label><RadioGroup name="meansToAct" options={['Yes', 'No', 'Not Applicable']} value={riskAssessment.meansToAct} onChange={(val) => setRiskAssessment(prev => ({ ...prev, meansToAct: val }))} /></div>
                       </div>
                       <SuggestionField
                         options={RISK_FACTORS_OPTIONS}
@@ -543,7 +598,7 @@ export default function SessionProgressNotePage() {
                   <div className="bg-muted/50 p-4 rounded-lg border space-y-3">
                     <div><p className="text-sm font-semibold mb-2">Objectives</p><p className="text-sm text-muted-foreground">1. Stay sober and maintain healthy relationships</p></div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                      <Label className="text-sm sm:whitespace-nowrap sm:min-w-[80px]">Progress:</Label>
+                      <Label className="text-sm sm:whitespace-nowrap sm:min-w-[80px]">Progress: *</Label>
                       <select value={treatmentProgress} onChange={(e) => setTreatmentProgress(e.target.value)} className="flex-1 lg:w-auto h-10 px-3 rounded-md border border-input bg-background text-sm">
                         <option value="">Select progress...</option>
                         {['Improved', 'Progressing', 'Maintained', 'No Progress', 'Regressed', 'Variable', 'Deferred', 'Not Addressed', 'On Hold', 'Completed'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
@@ -560,7 +615,7 @@ export default function SessionProgressNotePage() {
 
                 {/* Plan */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Plan</Label>
+                  <Label className="text-base font-semibold">Plan *</Label>
                   <Textarea value={plan} onChange={(e) => setPlan(e.target.value)} placeholder="Next steps in the treatment process" rows={4} className="resize-none" />
                 </div>
 
@@ -604,8 +659,13 @@ export default function SessionProgressNotePage() {
             </Section>
           </div>
           
+          {validationError && (
+            <div className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-900 text-sm">
+              {validationError}
+            </div>
+          )}
           <Button onClick={save} disabled={saving} size="lg" className="w-full sm:w-auto">
-            {saving ? 'Saving...' : 'Save Progress Note'}
+            {saving ? 'Saving...' : 'Save & Next'}
           </Button>
         </div>
       </div>
