@@ -18,7 +18,6 @@ async function getCurrentUser() {
   const { data, error } = await supabase.auth.getUser()
   
   if (error) {
-    console.error('Auth error:', error)
     throw new Error('Authentication error')
   }
   
@@ -50,7 +49,6 @@ async function ensureTherapistExists(user: { id: string; user_metadata?: { full_
       })
     
     if (error) {
-      console.error('Error creating therapist:', error)
       throw new Error('Failed to create therapist profile')
     }
   }
@@ -69,26 +67,6 @@ export async function getTherapist(): Promise<Therapist> {
   
   if (error) {
     throw new Error(`Failed to get therapist: ${error.message}`)
-  }
-  
-  return data
-}
-
-export async function createTherapist(name: string): Promise<Therapist> {
-  const user = await getCurrentUser()
-  const supabase = await createSupabaseClient()
-  
-  const { data, error } = await supabase
-    .from('therapists')
-    .insert({
-      id: user.id,
-      name
-    })
-    .select()
-    .single()
-  
-  if (error) {
-    throw new Error(`Failed to create therapist: ${error.message}`)
   }
   
   return data
@@ -223,7 +201,7 @@ export async function getSessions(date?: string): Promise<Session[]> {
   // Fetch progress notes for all sessions
   const { data: progressNotes } = await supabase
     .from('progress_notes')
-    .select('id, session_id')
+    .select('id, session_id, synced_to_therapynotes')
     .in('session_id', sessionIds)
     .eq('therapist_id', user.id)
   
@@ -232,10 +210,18 @@ export async function getSessions(date?: string): Promise<Session[]> {
     (progressNotes || []).map(note => note.session_id)
   )
   
-  // Transform the data to include has_progress_note flag
+  // Create a set of session IDs that have synced progress notes
+  const sessionIdsWithSyncedNotes = new Set(
+    (progressNotes || [])
+      .filter(note => note.synced_to_therapynotes)
+      .map(note => note.session_id)
+  )
+  
+  // Transform the data to include has_progress_note and progress_note_synced flags
   const sessions = (data || []).map((session: Session) => ({
     ...session,
-    has_progress_note: sessionIdsWithNotes.has(session.id)
+    has_progress_note: sessionIdsWithNotes.has(session.id),
+    progress_note_synced: sessionIdsWithSyncedNotes.has(session.id)
   }))
   
   return sessions
@@ -424,7 +410,6 @@ export async function createRecurringSessions(request: CreateSessionRequest): Pr
       if (error) {
         // If it's a duplicate key error, skip this session and continue
         if (error.code === '23505') {
-          console.warn(`Skipping duplicate session for ${sessionDate.toISOString().split('T')[0]} at ${request.start_time}`)
           continue
         }
         throw new Error(`Failed to create session: ${error.message}`)
@@ -434,7 +419,6 @@ export async function createRecurringSessions(request: CreateSessionRequest): Pr
     } catch (error) {
       // If it's a duplicate key error, skip this session and continue
       if (error instanceof Error && error.message.includes('duplicate key')) {
-        console.warn(`Skipping duplicate session for ${sessionDate.toISOString().split('T')[0]} at ${request.start_time}`)
         continue
       }
       throw error

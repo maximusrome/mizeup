@@ -45,8 +45,7 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
         onDelete(session.id)
       }
       setShowDeleteDialog(false)
-    } catch (error) {
-      console.error('Error deleting session:', error)
+    } catch {
       alert('Failed to delete session. Please try again.')
     } finally {
       setIsDeleting(false)
@@ -91,15 +90,23 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Synced
+              Session Synced
             </span>
           )}
-          {session.has_progress_note && (
+          {session.has_progress_note && !session.progress_note_synced && (
             <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
               Note
+            </span>
+          )}
+          {session.progress_note_synced && (
+            <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-100 text-green-800">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Note Synced
             </span>
           )}
         </div>

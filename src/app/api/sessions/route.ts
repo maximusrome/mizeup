@@ -11,7 +11,6 @@ export async function GET(request: NextRequest) {
     const sessions = await getSessions(date)
     return NextResponse.json({ data: sessions })
   } catch (error) {
-    console.error('Error getting sessions:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to get sessions' },
       { status: 500 }
@@ -55,7 +54,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ data: session }, { status: 201 })
     }
   } catch (error) {
-    console.error('Error creating session:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create session' },
       { status: 500 }

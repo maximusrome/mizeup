@@ -127,8 +127,8 @@ export default function SessionModal({
     try {
       const clientsData = await getClients()
       setClients(clientsData)
-    } catch (error) {
-      console.error('Error loading clients:', error)
+    } catch {
+      // Silently handle client loading errors
     }
   }
 
@@ -285,7 +285,6 @@ export default function SessionModal({
 
       onClose()
     } catch (error) {
-      console.error('Error saving session:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to save session'
       alert(errorMessage)
     } finally {
@@ -331,8 +330,7 @@ export default function SessionModal({
       setShowUpdateScopeDialog(false)
       setPendingSessionData(null)
       onClose()
-    } catch (error) {
-      console.error('Error updating session:', error)
+    } catch {
       alert('Failed to update session. Please try again.')
     } finally {
       setIsLoading(false)

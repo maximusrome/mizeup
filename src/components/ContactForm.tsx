@@ -95,6 +95,32 @@ export function ContactForm() {
               )}
             />
           </div>
+
+          <FormField
+            control={form.control}
+            name="subject"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Subject</FormLabel>
+                <FormControl>
+                  <select
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                  >
+                    <option value="">Select a topic...</option>
+                    <option value="Schedule Demo">Schedule Demo</option>
+                    <option value="Question">Question</option>
+                    <option value="Feedback">Feedback</option>
+                    <option value="Partnership">Partnership</option>
+                    <option value="Investment">Investment</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
           <FormField
             control={form.control}

@@ -12,7 +12,6 @@ export async function GET(
     const session = await getSession(id)
     return NextResponse.json({ data: session })
   } catch (error) {
-    console.error('Error getting session:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to get session' },
       { status: 500 }
@@ -50,7 +49,6 @@ export async function PUT(
     
     return NextResponse.json({ data: sessions })
   } catch (error) {
-    console.error('Error updating session:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update session' },
       { status: 500 }
@@ -77,7 +75,6 @@ export async function DELETE(
     
     return NextResponse.json({ message: 'Session deleted successfully' })
   } catch (error) {
-    console.error('Error deleting session:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete session' },
       { status: 500 }

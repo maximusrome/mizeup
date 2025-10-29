@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import React, { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ContactForm } from '@/components/ContactForm';
@@ -33,19 +32,6 @@ const steps = [
 
 
 function HomeContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  // Handle password reset redirect
-  useEffect(() => {
-    const code = searchParams.get('code');
-    if (code) {
-      // Redirect to update password page with the code
-      router.replace(`/auth/update-password?code=${code}`);
-    }
-  }, [searchParams, router]);
-
-
   return (
     <div className="min-h-screen">
       {/* Navigation */}
@@ -74,7 +60,7 @@ function HomeContent() {
             <Card className="glass-card glow-card p-6 md:p-12 rounded-3xl">
               <CardContent className="pt-6 px-0">
                 <h1 className="mb-8">
-                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">OptiMize Your Therapy Practice.</span>
+                  <span className="logo-gradient block text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">Optimize Your Therapy Practice.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
                   Stop leaving money on the table with hidden billing codes.
@@ -218,7 +204,7 @@ function HomeContent() {
           <div className="flex flex-col lg:flex-row justify-between items-center space-y-6 lg:space-y-0">
             <div className="text-center lg:text-left">
               <h3 className="text-2xl font-bold mb-2 logo-gradient">MizeUp</h3>
-              <p className="text-muted-foreground text-sm">OptiMize Your Therapy Practice.</p>
+              <p className="text-muted-foreground text-sm">Optimize Your Therapy Practice.</p>
             </div>
             <div className="text-muted-foreground text-sm text-center lg:text-left">
               &copy; 2025 MizeUp. All rights reserved.

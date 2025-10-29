@@ -5,8 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { 
-  Calendar, 
-  FileText, 
+  Calendar,
   DollarSign, 
   User, 
   Menu, 
@@ -17,7 +16,6 @@ import {
 
 const navigation = [
   { name: 'Calendar', href: '/private/calendar', icon: Calendar },
-  { name: 'Notes', href: '/private/notes', icon: FileText },
   { name: 'Revenue', href: '/private/revenue', icon: DollarSign },
 ]
 

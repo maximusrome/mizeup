@@ -8,7 +8,6 @@ export async function GET() {
     const clients = await getClients()
     return NextResponse.json({ data: clients })
   } catch (error) {
-    console.error('Error getting clients:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to get clients' },
       { status: 500 }
@@ -35,7 +34,6 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ data: client }, { status: 201 })
   } catch (error) {
-    console.error('Error creating client:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create client' },
       { status: 500 }
