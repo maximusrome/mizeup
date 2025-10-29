@@ -113,11 +113,18 @@ const formatTime = (time: string) => {
 }
 
 // Components
-const Section = ({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode }) => (
+const Section = ({ title, open, onToggle, children, reimbursement }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode; reimbursement?: string }) => (
   <div className="border rounded-lg">
     <button onClick={onToggle} className="w-full px-4 py-3 flex items-center justify-between bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-t-lg">
       <span className="font-semibold">{title}</span>
-      <span className={`transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
+      <div className="flex items-center gap-3">
+        {reimbursement && (
+          <span className="bg-background text-success border border-success px-3 py-1 rounded-full text-sm font-bold">
+            {reimbursement}
+          </span>
+        )}
+        <span className={`transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
+      </div>
     </button>
     {open && <div className="p-4 space-y-2">{children}</div>}
   </div>
@@ -194,7 +201,7 @@ export default function SessionProgressNotePage() {
     fetch(`/api/sessions/${sessionId}`)
       .then(res => res.json())
       .then(({ data }) => setSession(data))
-      .catch(err => console.error('Error fetching session:', err))
+      .catch(() => {})
     
     fetch(`/api/notes/${sessionId}`)
       .then(res => res.json())
@@ -366,7 +373,7 @@ export default function SessionProgressNotePage() {
           <h1 className="text-3xl font-bold mb-6">Progress Note</h1>
           
           <div className="space-y-4 mb-6">
-            <Section title="Interactive Complexity +90785" open={open1} onToggle={() => setOpen1(!open1)}>
+            <Section title="Interactive Complexity +90785" open={open1} onToggle={() => setOpen1(!open1)} reimbursement="+$12.96">
               {questions.filter(q => q.code === '90785').map(q => (
                 <div key={q.id}>
                   <div className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
@@ -387,7 +394,7 @@ export default function SessionProgressNotePage() {
               ))}
             </Section>
 
-            <Section title="After Hours +99050" open={open2} onToggle={() => setOpen2(!open2)}>
+            <Section title="After Hours +99050" open={open2} onToggle={() => setOpen2(!open2)} reimbursement="+$16.58">
               {questions.filter(q => q.code === '99050').map(q => (
                 <div key={q.id}>
                   <div className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>

@@ -12,7 +12,6 @@ export async function GET(
     const client = await getClient(id)
     return NextResponse.json({ data: client })
   } catch (error) {
-    console.error('Error getting client:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to get client' },
       { status: 500 }
@@ -43,7 +42,6 @@ export async function PUT(
     
     return NextResponse.json({ data: client })
   } catch (error) {
-    console.error('Error updating client:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update client' },
       { status: 500 }
@@ -61,7 +59,6 @@ export async function DELETE(
     await deleteClient(id)
     return NextResponse.json({ message: 'Client deleted successfully' })
   } catch (error) {
-    console.error('Error deleting client:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to delete client' },
       { status: 500 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from '@/components/Sidebar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -86,21 +86,19 @@ export default function CalendarPage() {
 
 
   // Load sessions from database
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       setIsLoading(true)
       const sessionsData = await getSessions()
-      setSessions(sessionsData)
-    } catch (error) {
-      console.error('Error loading sessions:', error)
+      setSessions(sortSessions(sessionsData))
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadSessions()
-  }, [])
+  }, [loadSessions])
 
   const formatDate = (dateString: string) => {
     const date = parseLocalDateString(dateString)
@@ -122,18 +120,22 @@ export default function CalendarPage() {
     setIsModalOpen(true)
   }
 
+  // Ensure sessions are always ordered by date then start time
+  const sortSessions = (list: Session[]) =>
+    [...list].sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+
   const handleSessionSave = (session: Session) => {
     setSessions(prev => {
       if (editingSession) {
         // Update existing session - replace it
-        return prev.map(s => s.id === session.id ? session : s)
+        return sortSessions(prev.map(s => s.id === session.id ? session : s))
       } else {
         // Add new session - avoid duplicates
         const exists = prev.some(s => s.id === session.id)
         if (exists) {
-          return prev.map(s => s.id === session.id ? session : s)
+          return sortSessions(prev.map(s => s.id === session.id ? session : s))
         }
-        return [...prev, session]
+        return sortSessions([...prev, session])
       }
     })
   }
@@ -147,12 +149,12 @@ export default function CalendarPage() {
         // Add all the new/updated sessions, avoiding duplicates
         const newSessionIds = new Set(newSessions.map(s => s.id))
         const withoutDuplicates = withoutEditing.filter(s => !newSessionIds.has(s.id))
-        return [...withoutDuplicates, ...newSessions]
+        return sortSessions([...withoutDuplicates, ...newSessions])
       } else {
         // Creating new sessions: just add them, avoiding duplicates
         const existingIds = new Set(prev.map(s => s.id))
         const trulyNew = newSessions.filter(s => !existingIds.has(s.id))
-        return [...prev, ...trulyNew]
+        return sortSessions([...prev, ...trulyNew])
       }
     })
   }
@@ -165,9 +167,9 @@ export default function CalendarPage() {
   const handleBulkDelete = async () => {
     try {
       const updatedSessions = await getSessions()
-      setSessions(updatedSessions)
-    } catch (error) {
-      console.error('Error refetching sessions:', error)
+      setSessions(sortSessions(updatedSessions))
+    } catch {
+      // Silently handle refetch errors
     }
   }
 
@@ -199,8 +201,8 @@ export default function CalendarPage() {
           syncedIds.push(session.id)
           setSyncStatus(`Syncing ${i + 1}/${unsyncedSessions.length}...`)
         }
-      } catch (error) {
-        console.error('Sync error:', error)
+      } catch {
+        // Continue with next session
       }
     }
 
@@ -217,12 +219,25 @@ export default function CalendarPage() {
     const unsyncedNotes = sessions.filter(s => 
       weekDates.includes(s.date) && 
       s.has_progress_note && 
-      !s.progress_note_synced
+      !s.progress_note_synced &&
+      s.synced_to_therapynotes // Session must be synced first
     )
 
     if (!unsyncedNotes.length) {
-      setSyncStatus('All progress notes already synced')
-      setTimeout(() => setSyncStatus(null), 3000)
+      const hasUnsyncedSessions = sessions.some(s => 
+        weekDates.includes(s.date) && 
+        s.has_progress_note && 
+        !s.progress_note_synced &&
+        !s.synced_to_therapynotes
+      )
+      
+      if (hasUnsyncedSessions) {
+        setSyncStatus('Sync sessions to TherapyNotes first')
+        setTimeout(() => setSyncStatus(null), 3000)
+      } else {
+        setSyncStatus('All progress notes already synced')
+        setTimeout(() => setSyncStatus(null), 3000)
+      }
       return
     }
 
@@ -231,29 +246,25 @@ export default function CalendarPage() {
 
     for (const [i, session] of unsyncedNotes.entries()) {
       try {
+        setSyncStatus(`Syncing note ${i + 1}/${unsyncedNotes.length}...`)
+        
         // Fetch the progress note for this session
         const noteResponse = await fetch(`/api/notes/${session.id}`)
         const { data: note } = await noteResponse.json()
 
         if (!note) {
-          console.error(`Note not found for session ${session.id}`)
           continue
         }
 
         // Sync the note to TherapyNotes
-        setSyncStatus(`Syncing note ${i + 1}/${unsyncedNotes.length}...`)
-        const response = await fetch(`/api/therapynotes/sync-note/${note.id}`, {
-          method: 'POST'
-        })
+        const response = await fetch(`/api/therapynotes/sync-note/${note.id}`, { method: 'POST' })
         const result = await response.json()
 
         if (result.success) {
           syncedIds.push(session.id)
-        } else {
-          console.error(`Sync error for session ${session.id}:`, result.error)
         }
-      } catch (error) {
-        console.error(`Sync error for session ${session.id}:`, error)
+      } catch {
+        // Continue with next session
       }
     }
 
@@ -375,9 +386,7 @@ export default function CalendarPage() {
                 return (
                   <Card 
                     key={dayData.date} 
-                    className={`px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors ${
-                      dayData.isPast ? 'opacity-50' : ''
-                    }`}
+                    className="px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors"
                   >
                     <div className="mb-2">
                         <div className="flex items-center justify-between">

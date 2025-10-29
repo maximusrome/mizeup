@@ -45,8 +45,7 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
         onDelete(session.id)
       }
       setShowDeleteDialog(false)
-    } catch (error) {
-      console.error('Error deleting session:', error)
+    } catch {
       alert('Failed to delete session. Please try again.')
     } finally {
       setIsDeleting(false)

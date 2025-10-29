@@ -15,6 +15,55 @@ const TN_HEADERS = {
 const BASE_COOKIES = 'timezone-offset=-240; cookie-detection=1'
 const TN_RAC = 'BfcAAAAAAAD2ZJ40MeN_Gk1SkcfxW0mJoaa6g0Dn4n6NQfPwUKKXEw'
 
+// Hardcoded values for single-therapist setup
+const THERAPIST_ID = 63237
+const PRACTICE_ID = 36416
+const LOCATION_ID = 32291
+
+// Helper function to wrap content in HTML paragraph tags
+const toHtml = (text: string | undefined): string => text ? `<p>${text}</p>` : "<p></p>"
+
+// Map recommendation type string to API enum
+const getRecommendationType = (type: string | undefined): number => {
+  const normalized = type?.toLowerCase()
+  if (normalized === 'change' || normalized === 'change treatment goals or objectives') return 1
+  if (normalized === 'terminate' || normalized === 'terminate treatment') return 2
+  return 0 // Continue
+}
+
+// Build service codes array with add-on codes if applicable
+const buildServiceCodes = (billingCodes: any[]): any[] => {
+  const codes = [
+    { Id: 4217196, Code: "90837", Units: 1, IsAddOn: false } // Main service code
+  ]
+  
+  if (billingCodes?.some((bc: any) => bc.code === "90785")) {
+    codes.push({ Id: 4105110, Code: "90785", Units: 1, IsAddOn: true })
+  }
+  
+  if (billingCodes?.some((bc: any) => bc.code === "99050")) {
+    codes.push({ Id: 4183917, Code: "99050", Units: 1, IsAddOn: true })
+  }
+  
+  return codes
+}
+
+// Extract IP address from encrypted form metadata token
+const decodeIpAddress = (token: string): string => {
+  try {
+    let base64 = token.replace(/-/g, '+').replace(/_/g, '/')
+    while (base64.length % 4) base64 += '='
+    const decoded = atob(base64)
+    const jsonEnd = decoded.lastIndexOf('}}')
+    if (jsonEnd === -1) throw new Error('Invalid token structure')
+    const jsonString = decoded.substring(0, jsonEnd + 2)
+    const parsed = JSON.parse(jsonString)
+    return parsed.GetNoteRequest?.IpAddress
+  } catch (e) {
+    throw new Error('Failed to extract IP address from encrypted form metadata')
+  }
+}
+
 function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFormMetadata: string, treatmentObjectives: any[], ipAddress: string) {
   const content = note.content
 
@@ -22,24 +71,24 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
     // Mental Status (13010) - DYNAMIC from progress note
     {
       Value: {
-        Orientation: content.mentalStatus?.Orientation || content.mentalStatus?.orientation || "X3: Oriented to Person, Place, and Time",
-        Insights: content.mentalStatus?.Insights || content.mentalStatus?.insights || "Appropriate",
-        GeneralAppearance: content.mentalStatus?.GeneralAppearance || content.mentalStatus?.generalAppearance || "Appropriate",
-        JudgmentImpulseControl: content.mentalStatus?.JudgmentImpulseControl || content.mentalStatus?.judgmentImpulseControl || "Appropriate",
-        Dress: content.mentalStatus?.Dress || content.mentalStatus?.dress || "Appropriate",
-        Memory: content.mentalStatus?.Memory || content.mentalStatus?.memory || "Intact",
-        MotorActivity: content.mentalStatus?.MotorActivity || content.mentalStatus?.motorActivity || "Normal",
-        AttentionConcentration: content.mentalStatus?.AttentionConcentration || content.mentalStatus?.attentionConcentration || "Appropriate",
-        InterviewBehavior: content.mentalStatus?.InterviewBehavior || content.mentalStatus?.interviewBehavior || "Appropriate",
-        ThoughtProcess: content.mentalStatus?.ThoughtProcess || content.mentalStatus?.thoughtProcess || "Normal",
-        Speech: content.mentalStatus?.Speech || content.mentalStatus?.speech || "Normal",
-        ThoughtContent: content.mentalStatus?.ThoughtContent || content.mentalStatus?.thoughtContent || "Appropriate",
-        Mood: content.mentalStatus?.Mood || content.mentalStatus?.mood || "Euthymic",
-        Perception: content.mentalStatus?.Perception || content.mentalStatus?.perception || "Normal",
-        Affect: content.mentalStatus?.Affect || content.mentalStatus?.affect || "Appropriate",
-        FunctionalStatus: content.mentalStatus?.FunctionalStatus || content.mentalStatus?.functionalStatus || "Appropriate",
-        CognitiveMentalStatus: content.mentalStatus?.CognitiveMentalStatus || content.mentalStatus?.cognitiveMentalStatus || "",
-        InterpersonalMentalStatus: content.mentalStatus?.InterpersonalMentalStatus || content.mentalStatus?.interpersonalMentalStatus || ""
+        Orientation: content.mentalStatus?.orientation || "X3: Oriented to Person, Place, and Time",
+        Insights: content.mentalStatus?.insight || "Appropriate",
+        GeneralAppearance: content.mentalStatus?.generalAppearance || "Appropriate",
+        JudgmentImpulseControl: content.mentalStatus?.judgmentImpulse || "Appropriate",
+        Dress: content.mentalStatus?.dress || "Appropriate",
+        Memory: content.mentalStatus?.memory || "Intact",
+        MotorActivity: content.mentalStatus?.motorActivity || "Normal",
+        AttentionConcentration: content.mentalStatus?.attentionConcentration || "Appropriate",
+        InterviewBehavior: content.mentalStatus?.interviewBehavior || "Appropriate",
+        ThoughtProcess: content.mentalStatus?.thoughtProcess || "Normal",
+        Speech: content.mentalStatus?.speech || "Normal",
+        ThoughtContent: content.mentalStatus?.thoughtContent || "Appropriate",
+        Mood: content.mentalStatus?.mood || "Euthymic",
+        Perception: content.mentalStatus?.perception || "Normal",
+        Affect: content.mentalStatus?.affect || "Appropriate",
+        FunctionalStatus: content.mentalStatus?.functionalStatus || "Appropriate",
+        CognitiveMentalStatus: content.mentalStatus?.cognitiveMentalStatus || "",
+        InterpersonalMentalStatus: content.mentalStatus?.interpersonalMentalStatus || ""
       },
       FormElementId: 13010,
       FormElementType: 1005
@@ -66,28 +115,26 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
     },
     // Medications (13014) - DYNAMIC from progress note
     { 
-      Value: content.medications ? `<p>${content.medications}</p>` : "<p></p>", 
+      Value: toHtml(content.medications), 
       FormElementId: 13014, 
       FormElementType: 26 
     },
     // Subjective (13000) - DYNAMIC from progress note
     { 
-      Value: content.subjectiveReport ? `<p>${content.subjectiveReport}</p>` : "<p></p>", 
+      Value: toHtml(content.subjectiveReport), 
       FormElementId: 13000, 
       FormElementType: 26 
     },
     // Objective (13001) - DYNAMIC from progress note
     { 
-      Value: content.objectiveContent ? `<p>${content.objectiveContent}</p>` : "<p></p>", 
+      Value: toHtml(content.objectiveContent), 
       FormElementId: 13001, 
       FormElementType: 26 
     },
     // Interventions (13005) - DYNAMIC from progress note
     { 
       Value: { 
-        Interventions: content.interventions && content.interventions.length > 0 
-          ? content.interventions 
-          : [], 
+        Interventions: content.interventions || [], 
         Other: "" 
       }, 
       FormElementId: 13005, 
@@ -95,26 +142,20 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
     },
     // Assessment (13002) - DYNAMIC from progress note
     { 
-      Value: content.assessment ? `<p>${content.assessment}</p>` : "<p></p>", 
+      Value: toHtml(content.assessment), 
       FormElementId: 13002, 
       FormElementType: 26 
     },
     // Plan (13003) - DYNAMIC from progress note
     { 
-      Value: content.plan ? `<p>${content.plan}</p>` : "<p></p>", 
+      Value: toHtml(content.plan), 
       FormElementId: 13003, 
       FormElementType: 26 
     },
     // Recommendation (13013) - DYNAMIC from progress note
     { 
       Value: { 
-        // Map recommendation type: 0 = Continue, 1 = Change goals, 2 = Terminate
-        Recommendation: (() => {
-          const type = content.recommendation?.type?.toLowerCase()
-          if (type === 'change' || type === 'change treatment goals or objectives') return 1
-          if (type === 'terminate' || type === 'terminate treatment') return 2
-          return 0 // Default to Continue
-        })(),
+        Recommendation: getRecommendationType(content.recommendation?.type),
         Frequency: content.recommendation?.prescribedFrequency || "Weekly" 
       }, 
       FormElementId: 13013, 
@@ -174,7 +215,7 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
         IsNew: true,
         SignerHasLicenses: true,
         DateSigned: new Date().toISOString().split('.')[0],
-        SignerId: 63237,
+        SignerId: THERAPIST_ID,
         SignerSignatureLicenseInfo: {
           SignerDisplayName: "Lauren Goorno,LICSW, Therapist, License 110916,",
           SignerLicenseNumber: "110916",
@@ -187,11 +228,10 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
     }
   ]
 
-  // FormMetadata with DYNAMIC CalendarEntryId
   const formMetadata = {
     GetNoteRequest: {
       NoteType: 4,
-      UserId: 63237,
+      UserId: THERAPIST_ID,
       PatientId: client.therapynotes_patient_id,
       CalendarEntryId: session.therapynotes_calendar_entry_id,
       NoteId: null,
@@ -211,10 +251,10 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
     OwnershipWillBeUpdatedOnSave: false,
     FormContext: 3,
     Locale: 1033,
-    PracticeId: 36416,
+    PracticeId: PRACTICE_ID,
     PatientId: client.therapynotes_patient_id,
-    UserId: 63237,
-    CalendarEntryClinicianId: 63237,
+    UserId: THERAPIST_ID,
+    CalendarEntryClinicianId: THERAPIST_ID,
     FormTimeZoneInfo: {
       Abbreviation: "EDT",
       TimeZoneOffset: -300,
@@ -244,7 +284,7 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
         Title: "Progress Note",
         DateAndTime: `${session.date}T${session.start_time}:00`,
         AppointmentDate: `${session.date}T${session.start_time}:00`,
-        AuthorUserId: 63237,
+        AuthorUserId: THERAPIST_ID,
         AuthorDisplayName: "Lauren Goorno,LICSW",
         ClinicianDisplayName: null,
         SupervisorId: null,
@@ -252,26 +292,10 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
         SupervisorRole: 0,
         SessionDuration: 60,
         LocationType: 1,
-        LocationId: 32291,
+        LocationId: LOCATION_ID,
         ParticipantsType: 1,
         OtherParticipants: "",
-        ServiceCodes: (() => {
-          const codes = [
-            { Id: 4217196, Code: "90837", Units: 1, IsAddOn: false } // Main service code
-          ]
-          
-          // Add Interactive Complexity (90785) if selected
-          if (content.billingCodes?.some((bc: any) => bc.code === "90785")) {
-            codes.push({ Id: 4105110, Code: "90785", Units: 1, IsAddOn: true })
-          }
-          
-          // Add After Hours (99050) if selected
-          if (content.billingCodes?.some((bc: any) => bc.code === "99050")) {
-            codes.push({ Id: 4183917, Code: "99050", Units: 1, IsAddOn: true })
-          }
-          
-          return codes
-        })()
+        ServiceCodes: buildServiceCodes(content.billingCodes)
       },
       FormElementValues: formElementValues
     },
@@ -364,7 +388,7 @@ serve(async (req) => {
 
     const cookies = `${BASE_COOKIES}; access-token=${accessToken}; ASP.NET_SessionId=${sessionId}`
 
-    // Call getnote to get form metadata for comparison
+    // Call getnote to get encrypted form metadata and treatment objectives
     const getNoteData = await getNote(
       note.sessions.therapynotes_encrypted_calendar_entry_id,
       note.sessions.clients.therapynotes_encrypted_patient_id,
@@ -372,80 +396,20 @@ serve(async (req) => {
     )
 
     const encryptedFormMetadataFromAPI = getNoteData.Form?.Data?.EncryptedFormMetadata
-    const encryptedFormMetadataHardcoded = "eyJOb3RlVGVtcGxhdGVJZCI6IjUiLCJDdXN0b21Gb3JtSWQiOiIiLCJDdXN0b21Gb3JtVmVyc2lvbklkIjoiIiwiRm9ybUNvbnRleHQiOiIzIiwiQ2FsZW5kYXJFbnRyeUlkIjoiMTA5ODU4NzU2MyIsIkdldE5vdGVSZXF1ZXN0Ijp7Ik5vdGVUeXBlIjo0LCJVc2VySWQiOjYzMjM3LCJQYXRpZW50SWQiOjIxOTA2OTcsIkNhbGVuZGFyRW50cnlJZCI6MTA5ODU4NzU2MywiTm90ZUlkIjpudWxsLCJOb3RlUmV2aXNpb24iOm51bGwsIklzRWRpdGluZyI6dHJ1ZSwiTm90ZVRlbXBsYXRlIjpudWxsLCJDdXN0b21Gb3JtSWQiOm51bGwsIkN1c3RvbUZvcm1WZXJzaW9uSWQiOm51bGwsIklwQWRkcmVzcyI6IjY3LjI0My4xMzQuMTAyIiwiV2FzU2F2ZWQiOmZhbHNlLCJJc0dyb3VwTm90ZVdvcmtmbG93IjpmYWxzZX19P-vszspDzQbBqCznrLMT-JgR8_cP5mBmMorF7Tda4So"
-
-    // Helper function to decode the EncryptedFormMetadata token
-    // The token is base64url-encoded JSON with a variable-length HMAC signature appended
-    const decodeFormMetadata = (token: string): any => {
-      try {
-        // Convert base64url to standard base64 (replace URL-safe chars and add padding)
-        let base64 = token.replace(/-/g, '+').replace(/_/g, '/')
-        // Add padding if needed
-        while (base64.length % 4) {
-          base64 += '='
-        }
-        
-        // Decode the base64 - this will include the JSON + signature bytes
-        const decoded = atob(base64)
-        
-        // Find where the JSON actually ends (at the last '}')
-        // The signature bytes come after this
-        const jsonEnd = decoded.lastIndexOf('}}')
-        
-        if (jsonEnd === -1) {
-          throw new Error('Invalid token structure - no JSON found')
-        }
-        
-        // Extract just the JSON portion (including the closing braces)
-        const jsonString = decoded.substring(0, jsonEnd + 2)
-        
-        // Parse and return
-        return JSON.parse(jsonString)
-      } catch (e) {
-        console.error('Failed to decode token:', e)
-        return null
-      }
+    if (!encryptedFormMetadataFromAPI) {
+      throw new Error('Failed to retrieve encrypted form metadata from TherapyNotes')
     }
 
-    // Decode both tokens
-    const decodedFromAPI = decodeFormMetadata(encryptedFormMetadataFromAPI)
-    const decodedHardcoded = decodeFormMetadata(encryptedFormMetadataHardcoded)
-
-    console.log('========== ENCRYPTED FORM METADATA COMPARISON ==========')
-    console.log('FROM API (full token):', encryptedFormMetadataFromAPI)
-    console.log('HARDCODED (full token):', encryptedFormMetadataHardcoded)
-    console.log('')
-    console.log('DECODED FROM API:', JSON.stringify(decodedFromAPI, null, 2))
-    console.log('')
-    console.log('DECODED HARDCODED:', JSON.stringify(decodedHardcoded, null, 2))
-    console.log('')
-    console.log('TOKENS ARE EQUAL?', encryptedFormMetadataFromAPI === encryptedFormMetadataHardcoded)
-    console.log('========================================================')
-    
-    // Also check if FormMetadata IDs match what we're using
-    console.log('')
-    console.log('========== CHECKING FormMetadata vs EncryptedFormMetadata ==========')
-    console.log('FormMetadata.CalendarEntryId:', note.sessions.therapynotes_calendar_entry_id)
-    console.log('API EncryptedFormMetadata.CalendarEntryId:', decodedFromAPI?.CalendarEntryId)
-    console.log('FormMetadata.PatientId:', note.sessions.clients.therapynotes_patient_id)
-    console.log('API EncryptedFormMetadata.PatientId:', decodedFromAPI?.GetNoteRequest?.PatientId)
-    console.log('API IP Address:', decodedFromAPI?.GetNoteRequest?.IpAddress)
-    console.log('=====================================================================')
-
-    // Extract IP address and treatment objectives from API response
-    // If we couldn't decode the token, we must fail - using a wrong IP will cause TherapyNotes to reject with 500
-    if (!decodedFromAPI?.GetNoteRequest?.IpAddress) {
-      throw new Error('Failed to extract IP address from EncryptedFormMetadata. Cannot proceed with sync.')
-    }
-    
-    const ipAddressFromAPI = decodedFromAPI.GetNoteRequest.IpAddress
+    // Extract treatment objectives from API response
     const treatmentObjectives = getNoteData.Form?.Data?.FormElementValues?.find(
       (el: any) => el.FormElementId === 13008
     )?.Value?.ObjectivesProgress || []
 
-    console.log('Using IP Address:', ipAddressFromAPI)
-    console.log('Using EncryptedFormMetadata from API (not hardcoded)')
-    console.log('Token decoded successfully ✓')
+    // Extract IP address from the encrypted metadata (required by TherapyNotes API)
+    const ipAddressFromAPI = decodeIpAddress(encryptedFormMetadataFromAPI)
+    if (!ipAddressFromAPI) {
+      throw new Error('IP address is required but could not be extracted from form metadata')
+    }
 
     // Build FormData structure with DYNAMIC values from API
     const formData = buildSaveNoteRequest(
@@ -568,9 +532,6 @@ async function getNote(calendarEntryId: string, patientId: string, cookies: stri
 }
 
 async function saveNote(formData: any, cookies: string) {
-  const requestBody = JSON.stringify(formData)
-  console.log('SaveNote request body (first 2000 chars):', requestBody.substring(0, 2000))
-  
   const response = await fetch('https://www.therapynotes.com/app/notes/api/savenote.aspx?msg=9', {
     method: 'POST',
     headers: {
@@ -581,21 +542,18 @@ async function saveNote(formData: any, cookies: string) {
     },
     body: new URLSearchParams({
       msg: '9',
-      savenoterequest: requestBody,
+      savenoterequest: JSON.stringify(formData),
       correlationid: crypto.randomUUID(),
       tnrac: TN_RAC,
       tnv: '2025.8.8.96.230741'
     }).toString()
   })
 
-  const responseText = await response.text()
-  console.log('SaveNote response status:', response.status)
-  console.log('SaveNote response (first 500 chars):', responseText.substring(0, 500))
-
   if (!response.ok) {
     throw new Error(`SaveNote failed with status ${response.status}`)
   }
 
+  const responseText = await response.text()
   let result
   try {
     result = JSON.parse(responseText)

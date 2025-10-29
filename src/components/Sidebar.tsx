@@ -17,7 +17,6 @@ import {
 
 const navigation = [
   { name: 'Calendar', href: '/private/calendar', icon: Calendar },
-  { name: 'Notes', href: '/private/notes', icon: FileText },
   { name: 'Revenue', href: '/private/revenue', icon: DollarSign },
 ]
 
