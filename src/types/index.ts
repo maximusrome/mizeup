@@ -11,6 +11,7 @@ export interface Client {
   id: string
   therapist_id: string
   name: string
+  therapynotes_patient_id?: number
   therapynotes_encrypted_patient_id?: string
   created_at: string
   updated_at: string

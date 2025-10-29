@@ -42,7 +42,8 @@ serve(async (req) => {
         success: true, 
         appointmentId: appointment.ID,
         encryptedId: appointment.EncryptedID,
-        patientEncryptedId: patient.EncryptedID  // Also return patient encrypted ID
+        patientId: patient.ID,
+        patientEncryptedId: patient.EncryptedID
       }),
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )

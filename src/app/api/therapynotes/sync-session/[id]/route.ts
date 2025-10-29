@@ -51,11 +51,14 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       })
       .eq('id', id)
 
-    // Also store patient encrypted ID on client record if provided
-    if (data.patientEncryptedId) {
+    // Store patient IDs on client record
+    if (data.patientEncryptedId || data.patientId) {
       await supabase
         .from('clients')
-        .update({ therapynotes_encrypted_patient_id: data.patientEncryptedId })
+        .update({ 
+          therapynotes_patient_id: data.patientId,
+          therapynotes_encrypted_patient_id: data.patientEncryptedId 
+        })
         .eq('id', session.client_id)
     }
 

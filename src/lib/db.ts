@@ -223,7 +223,7 @@ export async function getSessions(date?: string): Promise<Session[]> {
   // Fetch progress notes for all sessions
   const { data: progressNotes } = await supabase
     .from('progress_notes')
-    .select('id, session_id')
+    .select('id, session_id, synced_to_therapynotes')
     .in('session_id', sessionIds)
     .eq('therapist_id', user.id)
   
@@ -232,10 +232,18 @@ export async function getSessions(date?: string): Promise<Session[]> {
     (progressNotes || []).map(note => note.session_id)
   )
   
-  // Transform the data to include has_progress_note flag
+  // Create a set of session IDs that have synced progress notes
+  const sessionIdsWithSyncedNotes = new Set(
+    (progressNotes || [])
+      .filter(note => note.synced_to_therapynotes)
+      .map(note => note.session_id)
+  )
+  
+  // Transform the data to include has_progress_note and progress_note_synced flags
   const sessions = (data || []).map((session: Session) => ({
     ...session,
-    has_progress_note: sessionIdsWithNotes.has(session.id)
+    has_progress_note: sessionIdsWithNotes.has(session.id),
+    progress_note_synced: sessionIdsWithSyncedNotes.has(session.id)
   }))
   
   return sessions
