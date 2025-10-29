@@ -346,17 +346,17 @@ export default function CalendarPage() {
                   disabled={isSyncing}
                   className="h-8 px-3 text-xs"
                 >
-                  {isSyncing ? 'Syncing...' : 'Sync to TherapyNotes'}
+                  {isSyncing ? 'Syncing...' : 'Sync Sessions'}
                 </Button>
 
                 <Button
-                  variant="outline"
+                  variant="default"
                   size="sm"
                   onClick={handleSyncProgressNotes}
                   disabled={isSyncingNotes}
                   className="h-8 px-3 text-xs"
                 >
-                  {isSyncingNotes ? 'Syncing...' : 'Sync Progress Notes'}
+                  {isSyncingNotes ? 'Syncing...' : 'Sync Notes'}
                 </Button>
               </div>
               
