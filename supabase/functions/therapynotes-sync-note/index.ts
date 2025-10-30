@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
@@ -29,6 +30,35 @@ const getRecommendationType = (type: string | undefined): number => {
   if (normalized === 'change' || normalized === 'change treatment goals or objectives') return 1
   if (normalized === 'terminate' || normalized === 'terminate treatment') return 2
   return 0 // Continue
+}
+
+// Risk Assessment mappings
+function mapLevelOfRisk(level: string | undefined): number {
+  switch ((level || '').toLowerCase()) {
+    case 'low': return 1
+    case 'medium': return 2
+    case 'high': return 3
+    case 'imminent': return 4
+    default: return 0
+  }
+}
+
+function mapYesNoNA(value: string | undefined): number {
+  switch ((value || '').toLowerCase()) {
+    case 'yes': return 1
+    case 'no': return 2
+    case 'not applicable': return 3
+    default: return 0
+  }
+}
+
+function toStringArray(list: unknown): string[] {
+  if (!list) return []
+  if (Array.isArray(list)) return list.map(x => `${x}`.trim()).filter(Boolean)
+  return `${list}`
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
 }
 
 // Build service codes array with add-on codes if applicable
@@ -93,23 +123,28 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
       FormElementId: 13010,
       FormElementType: 1005
     },
-    // Risk Assessment (13011) - HARDCODED for testing (patient denies all risk)
+    // Risk Assessment (13011) - DYNAMIC from progress note
     {
-      Value: {
-        ParticipantsType: 1,
-        PatientDeniesAllAreasOfRisk: true,
-        RiskAssessments: [{
-          AreaOfRisk: "",
-          LevelOfRisk: 0,
-          IntentToAct: 0,
-          PlanToAct: 0,
-          MeansToAct: 0,
-          RiskFactors: [],
-          ProtectiveFactors: [],
-          AdditionalDetails: "",
+      Value: (() => {
+        const ra = content.riskAssessment
+        const patientDenies = !!ra?.patientDeniesRisk
+        const assessment = {
+          AreaOfRisk: ra?.areaOfRisk || "",
+          LevelOfRisk: mapLevelOfRisk(ra?.levelOfRisk),
+          IntentToAct: mapYesNoNA(ra?.intentToAct),
+          PlanToAct: mapYesNoNA(ra?.planToAct),
+          MeansToAct: mapYesNoNA(ra?.meansToAct),
+          RiskFactors: toStringArray(ra?.riskFactors),
+          ProtectiveFactors: toStringArray(ra?.protectiveFactors),
+          AdditionalDetails: ra?.additionalDetails || "",
           NoSafetyIssues: null
-        }]
-      },
+        }
+        return {
+          ParticipantsType: 1,
+          PatientDeniesAllAreasOfRisk: patientDenies,
+          RiskAssessments: patientDenies ? [{ ...assessment, AreaOfRisk: "", LevelOfRisk: 0, IntentToAct: 0, PlanToAct: 0, MeansToAct: 0, RiskFactors: [], ProtectiveFactors: [], AdditionalDetails: "" }] : [assessment]
+        }
+      })(),
       FormElementId: 13011,
       FormElementType: 1004
     },
@@ -161,14 +196,14 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
       FormElementId: 13013, 
       FormElementType: 1006 
     },
-    // Diagnosis (13009) - HARDCODED for testing
+    // Diagnosis (13009) - DYNAMIC from progress note
     {
       Value: {
         DsmVersion: 5,
         NoteDiagnoses: [
-          { Code: "F10.20", Description: "Alcohol Use Disorder, Severe", Axis: null },
-          { Code: "F32.0", Description: "Major Depressive Disorder, Single episode, Mild", Axis: null }
-        ],
+          { Code: content.diagnosis?.code || "", Description: content.diagnosis?.description || "", Axis: null },
+          ...(content.diagnoses || []).map((d: any) => ({ Code: d.code || "", Description: d.description || "", Axis: null }))
+        ].filter(d => d.Code && d.Description),
         Explanation: ""
       },
       FormElementId: 13009,
@@ -400,10 +435,8 @@ serve(async (req) => {
       throw new Error('Failed to retrieve encrypted form metadata from TherapyNotes')
     }
 
-    // Extract treatment objectives from API response
-    const treatmentObjectives = getNoteData.Form?.Data?.FormElementValues?.find(
-      (el: any) => el.FormElementId === 13008
-    )?.Value?.ObjectivesProgress || []
+    // Use treatment objectives from DB (stored with Id + Description)
+    const treatmentObjectives = (note.content?.treatmentObjectivesDetailed as any[]) || []
 
     // Extract IP address from the encrypted metadata (required by TherapyNotes API)
     const ipAddressFromAPI = decodeIpAddress(encryptedFormMetadataFromAPI)
