@@ -1,11 +1,10 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import Sidebar from '@/components/Sidebar'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import SessionModal from '@/components/calendar/SessionModal'
-import SessionCard from '@/components/calendar/SessionCard'
+import SessionModal from './_components/session-modal'
+import SessionCard from './_components/session-card'
 import { getSessions } from '@/lib/api'
 import type { Session } from '@/types'
 
@@ -279,11 +278,9 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="pt-16 lg:pt-0 lg:pl-64">
-        <div className="container mx-auto px-4 max-w-6xl">
-          <div className="py-6">
+    <>
+      <div className="container mx-auto px-4 max-w-6xl">
+        <div className="py-6">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-foreground mb-2">Calendar</h1>
             </div>
@@ -441,7 +438,6 @@ export default function CalendarPage() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Session Modal */}
       <SessionModal
@@ -456,6 +452,6 @@ export default function CalendarPage() {
         onSaveMultiple={handleSessionSaveMultiple}
         onBulkDelete={handleBulkDelete}
       />
-    </div>
+    </>
   )
 }

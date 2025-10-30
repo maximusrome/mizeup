@@ -115,7 +115,7 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push(`/private/notes/${session.id}`)}
+          onClick={() => router.push(`/notes/${session.id}`)}
           className="text-muted-foreground hover:text-foreground hover:bg-muted/50 h-8 w-8 p-0"
           title="Progress Note"
         >

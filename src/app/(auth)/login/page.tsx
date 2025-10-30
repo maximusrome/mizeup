@@ -106,7 +106,7 @@ function AuthPageContent() {
                   />
                   <div className="text-right">
                     <a 
-                      href="/auth/reset-password" 
+                      href="/reset-password" 
                       className="text-sm text-info hover:text-info/80"
                     >
                       Forgot password?

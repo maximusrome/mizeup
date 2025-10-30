@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import * as z from 'zod'
 
 // ============================================================================
@@ -50,7 +50,7 @@ export async function resetPassword(formData: FormData) {
 
   const supabase = await createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/update-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/update-password`,
   })
 
   if (error) {
@@ -82,7 +82,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/private/calendar')
+  redirect('/calendar')
 }
 
 export async function signup(formData: FormData) {
@@ -107,7 +107,7 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/private/calendar')
+  redirect('/calendar')
 }
 
 export async function updatePassword(formData: FormData) {
@@ -128,7 +128,7 @@ export async function updatePassword(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/auth/login?message=Password updated successfully')
+  redirect('/login?message=Password updated successfully')
 }
 
 export async function signOut() {
@@ -140,5 +140,5 @@ export async function signOut() {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/auth/login')
+  redirect('/login')
 }

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import Sidebar from '@/components/Sidebar'
 import type { Session, ProgressNoteContent } from '@/types'
 
 // Constants
@@ -427,12 +426,12 @@ export default function SessionProgressNotePage() {
     try {
       const res = await fetch('/api/sessions')
       if (!res.ok || !session) {
-        router.push('/private/calendar')
+        router.push('/calendar')
         return
       }
       const { data }: { data: Session[] } = await res.json()
       if (!data) {
-        router.push('/private/calendar')
+        router.push('/calendar')
         return
       }
 
@@ -445,12 +444,12 @@ export default function SessionProgressNotePage() {
         [0]
 
       if (nextUnwritten) {
-        router.push(`/private/notes/${nextUnwritten.id}`)
+        router.push(`/notes/${nextUnwritten.id}`)
       } else {
-        router.push('/private/calendar')
+        router.push('/calendar')
       }
     } catch {
-      router.push('/private/calendar')
+      router.push('/calendar')
     }
   }
 
@@ -478,11 +477,8 @@ export default function SessionProgressNotePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="pt-16 lg:pt-0 lg:pl-64">
-        <div className="container mx-auto px-4 max-w-6xl py-8">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/private/calendar')} className="mb-4">← Back</Button>
+    <div className="container mx-auto px-4 max-w-6xl py-8">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/calendar')} className="mb-4">← Back</Button>
           
           <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
@@ -776,7 +772,5 @@ export default function SessionProgressNotePage() {
             {saving ? 'Saving...' : 'Save & Next'}
           </Button>
         </div>
-      </div>
-    </div>
   )
 }

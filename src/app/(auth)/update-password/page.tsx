@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/supabase/client'
 import { updatePassword } from '../actions'
 
 export default function UpdatePasswordPage() {
@@ -131,14 +131,14 @@ export default function UpdatePasswordPage() {
             <div className="text-center space-y-4">
               <p className="text-red-600">Unable to verify reset link</p>
               <Button asChild>
-                <a href="/auth/reset-password">Request New Reset Link</a>
+                <a href="/reset-password">Request New Reset Link</a>
               </Button>
             </div>
           )}
           
           <div className="mt-6 text-center">
             <a 
-              href="/auth/login" 
+              href="/login" 
               className="text-sm text-blue-600 hover:text-blue-500"
             >
               Back to login

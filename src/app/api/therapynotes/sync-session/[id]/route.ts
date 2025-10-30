@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/db'
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {

@@ -15,8 +15,8 @@ import {
 } from 'lucide-react'
 
 const navigation = [
-  { name: 'Calendar', href: '/private/calendar', icon: Calendar },
-  { name: 'Revenue', href: '/private/revenue', icon: DollarSign },
+  { name: 'Calendar', href: '/calendar', icon: Calendar },
+  { name: 'Revenue', href: '/revenue', icon: DollarSign },
 ]
 
 export default function Sidebar() {
@@ -117,10 +117,10 @@ export default function Sidebar() {
           {/* Bottom pinned account link */}
           <div className="p-4 border-t">
             {(() => {
-              const isActive = pathname === '/private/account'
+              const isActive = pathname === '/account'
               return (
                 <Link
-                  href="/private/account"
+                  href="/account"
                   onClick={() => {
                     if (window.innerWidth < 1024) {
                       setIsOpen(false)

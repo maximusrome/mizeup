@@ -1,7 +1,7 @@
 import { type EmailOtpType } from '@supabase/supabase-js'
 import { type NextRequest } from 'next/server'
 
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
 export async function GET(request: NextRequest) {
@@ -24,5 +24,5 @@ export async function GET(request: NextRequest) {
   }
 
   // redirect back to login with error message in URL
-  redirect('/auth/login?message=Invalid or expired confirmation link')
+  redirect('/login?message=Invalid or expired confirmation link')
 }

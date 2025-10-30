@@ -3,7 +3,7 @@
 import React, { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ContactForm } from '@/components/ContactForm';
+import { ContactForm } from './_components/contact-form';
 
 // Data
 const features = [
@@ -43,10 +43,10 @@ function HomeContent() {
             </div>
             <div className="flex items-center space-x-3">
               <Button variant="ghost" asChild>
-                <a href="/auth/login">Log In</a>
+                <a href="/login">Log In</a>
               </Button>
               <Button asChild>
-                <a href="/auth/login?tab=signup">Get Started</a>
+                <a href="/login?tab=signup">Get Started</a>
               </Button>
             </div>
           </div>
@@ -68,7 +68,7 @@ function HomeContent() {
                 </p>
                 <div className="flex justify-center">
                   <Button size="lg" asChild>
-                    <a href="/auth/login?tab=signup">Get Started</a>
+                    <a href="/login?tab=signup">Get Started</a>
                   </Button>
                 </div>
               </CardContent>
@@ -191,7 +191,7 @@ function HomeContent() {
               <h2 className="text-3xl md:text-4xl font-bold mb-8">Ready to <span className="logo-gradient">MizeUp</span> your therapy practice?</h2>
               <div className="flex justify-center">
                 <Button size="lg" asChild>
-                  <a href="/auth/login?tab=signup">Get Started</a>
+                  <a href="/login?tab=signup">Get Started</a>
                 </Button>
               </div>
             </CardContent>

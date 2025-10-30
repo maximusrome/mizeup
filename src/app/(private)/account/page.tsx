@@ -1,8 +1,7 @@
-import Sidebar from '@/components/Sidebar'
-import SignOutButton from '@/app/auth/components/SignOutButton'
-import TherapyNotesCredentials from '@/components/therapynotes/TherapyNotesCredentials'
+import SignOutButton from './_components/sign-out-button'
+import TherapyNotesCredentials from './_components/therapynotes-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { createClient } from '@/utils/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { User, Mail, Calendar } from 'lucide-react'
 
 export default async function AccountPage() {
@@ -22,10 +21,7 @@ export default async function AccountPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="pt-16 lg:pt-0 lg:pl-64">
-        <div className="container mx-auto px-4 max-w-6xl">
+    <div className="container mx-auto px-4 max-w-6xl">
           <div className="py-8">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-foreground">Account</h1>
@@ -85,7 +81,5 @@ export default async function AccountPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
   )
 }

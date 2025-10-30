@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { signOut } from '../actions'
+import { signOut } from '@/app/(auth)/actions'
 
 export default function SignOutButton() {
   const [isLoading, setIsLoading] = useState(false)

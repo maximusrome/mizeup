@@ -68,7 +68,7 @@ export default function ResetPasswordPage() {
           
           <div className="mt-6 text-center">
             <a 
-              href="/auth/login" 
+              href="/login" 
               className="text-sm text-blue-600 hover:text-blue-500"
             >
               Back to login

@@ -1,13 +1,8 @@
 'use client'
 
-import Sidebar from '@/components/Sidebar'
-
 export default function RevenuePage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Sidebar />
-      <div className="pt-16 lg:pt-0 lg:pl-64">
-        <div className="container mx-auto px-4 max-w-6xl">
+    <div className="container mx-auto px-4 max-w-6xl">
           <div className="py-8">
             <div className="mb-6">
               <h1 className="text-3xl font-bold text-foreground">Revenue</h1>
@@ -24,7 +19,5 @@ export default function RevenuePage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
   )
 }
