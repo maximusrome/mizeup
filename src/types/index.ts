@@ -75,6 +75,10 @@ export interface ProgressNoteContent {
   objectiveContent?: string
   interventions?: string[]
   treatmentProgress?: string
+  treatmentObjectivesDetailed?: {
+    Id: number
+    TreatmentObjectiveDescription: string
+  }[]
   // Assessment & Plan
   assessment?: string
   plan?: string

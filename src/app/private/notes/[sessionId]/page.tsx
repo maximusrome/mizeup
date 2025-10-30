@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -197,6 +197,40 @@ export default function SessionProgressNotePage() {
   const [plan, setPlan] = useState('')
   const [recommendation, setRecommendation] = useState('continue')
   const [prescribedFrequency, setPrescribedFrequency] = useState('Weekly')
+  const [tnPrefilled, setTnPrefilled] = useState(false)
+  const [treatmentObjectivesDetailed, setTreatmentObjectivesDetailed] = useState<{ Id: number; TreatmentObjectiveDescription: string }[]>([])
+  const [additionalDiagnoses, setAdditionalDiagnoses] = useState<{ code: string; description: string }[]>([])
+  const didAutoPullRef = useRef(false)
+
+  const pullFromTherapyNotes = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/therapynotes/get-note/${sessionId}`)
+      if (!res.ok) return
+      const { data } = await res.json()
+      const dx = data?.diagnoses || []
+      if (dx.length > 0) {
+        setDiagnosisCode(prev => prev || dx[0].code || '')
+        setDiagnosisDescription(prev => prev || dx[0].description || '')
+        // Set additional diagnoses (skip first one since it goes in main fields)
+        setAdditionalDiagnoses(dx.slice(1))
+      }
+      type TNObjective = { Id: number; TreatmentObjectiveDescription: string }
+      const rawObjectives: unknown[] = Array.isArray(data?.objectives) ? (data.objectives as unknown[]) : []
+      const detailed: TNObjective[] = rawObjectives
+        .map((o) => {
+          const obj = o as { Id?: number; TreatmentObjectiveDescription?: string }
+          return {
+            Id: Number(obj.Id || 0),
+            TreatmentObjectiveDescription: String(obj.TreatmentObjectiveDescription || '')
+          }
+        })
+        .filter((o) => o.Id > 0 && o.TreatmentObjectiveDescription.trim())
+      if (detailed.length > 0) setTreatmentObjectivesDetailed(detailed)
+      if (dx.length > 0 || detailed.length > 0) setTnPrefilled(true)
+    } catch {
+      // no-op
+    }
+  }, [sessionId])
 
   useEffect(() => {
     fetch(`/api/sessions/${sessionId}`)
@@ -207,7 +241,14 @@ export default function SessionProgressNotePage() {
     fetch(`/api/notes/${sessionId}`)
       .then(res => res.json())
       .then(({ data }) => {
-        if (!data?.content) return
+        // If no saved content yet, auto-pull from TherapyNotes once
+        if (!data?.content) {
+          if (!didAutoPullRef.current) {
+            didAutoPullRef.current = true
+            pullFromTherapyNotes()
+          }
+          return
+        }
         
         const content = data.content as ProgressNoteContent
         
@@ -222,6 +263,10 @@ export default function SessionProgressNotePage() {
           setDiagnosisCode(content.diagnosis.code || '')
           setDiagnosisDescription(content.diagnosis.description || '')
         }
+        if (content.diagnoses) {
+          setAdditionalDiagnoses(content.diagnoses)
+        }
+        if (content.treatmentObjectivesDetailed) setTreatmentObjectivesDetailed(content.treatmentObjectivesDetailed)
         
         // Load mental status
         if (content.mentalStatus) {
@@ -263,7 +308,9 @@ export default function SessionProgressNotePage() {
           setPrescribedFrequency(content.recommendation.prescribedFrequency)
         }
       })
-  }, [sessionId])
+  }, [sessionId, pullFromTherapyNotes])
+
+  
 
   const toggle = (id: string) => {
     setQuestions(prev => {
@@ -353,6 +400,8 @@ export default function SessionProgressNotePage() {
     const content: ProgressNoteContent = {
       billingCodes: selectedBillingCodes.map(q => ({ code: q.code, text: q.note })),
       diagnosis: diagnosisCode || diagnosisDescription ? { code: diagnosisCode, description: diagnosisDescription } : undefined,
+      diagnoses: additionalDiagnoses.length > 0 ? additionalDiagnoses : undefined,
+      treatmentObjectivesDetailed: treatmentObjectivesDetailed.length > 0 ? treatmentObjectivesDetailed : undefined,
       mentalStatus,
       riskAssessment: {
         patientDeniesRisk,
@@ -418,6 +467,16 @@ export default function SessionProgressNotePage() {
     return `${(end.getTime() - start.getTime()) / 60000} minutes`
   }
 
+  const formatHeaderInfo = () => {
+    if (!session) return ''
+    const date = new Date(session.date)
+    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' })
+    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const timeRange = `${formatTime(session.start_time)} - ${formatTime(session.end_time)}`
+    const clientName = session.clients?.name || ''
+    return `${clientName ? clientName + ' • ' : ''}${weekday}, ${formattedDate} • ${timeRange}`
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar />
@@ -425,7 +484,15 @@ export default function SessionProgressNotePage() {
         <div className="container mx-auto px-4 max-w-6xl py-8">
           <Button variant="ghost" size="sm" onClick={() => router.push('/private/calendar')} className="mb-4">← Back</Button>
           
-          <h1 className="text-3xl font-bold mb-6">Progress Note</h1>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div>
+              <h1 className="text-3xl font-bold">Progress Note</h1>
+              <p className="mt-1 text-base font-medium text-foreground/80">{formatHeaderInfo()}</p>
+            </div>
+            {tnPrefilled && (
+              <span className="text-xs text-muted-foreground">Prefilled from TherapyNotes</span>
+            )}
+          </div>
           
           <div className="space-y-4 mb-6">
             <Section title="Interactive Complexity +90785" open={open1} onToggle={() => setOpen1(!open1)} reimbursement="+$12.96">
@@ -496,6 +563,36 @@ export default function SessionProgressNotePage() {
                       <Input value={diagnosisDescription} onChange={(e) => setDiagnosisDescription(e.target.value)} placeholder="e.g., Alcohol Use Disorder" className="flex-1" />
                     </div>
                   </div>
+                  {additionalDiagnoses.map((dx, idx) => (
+                    <div key={`additional-${idx}`} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <Label className="text-sm font-medium sm:min-w-[120px]">Code:</Label>
+                        <Input 
+                          value={dx.code} 
+                          onChange={(e) => {
+                            const newAdditional = [...additionalDiagnoses]
+                            newAdditional[idx] = { ...dx, code: e.target.value }
+                            setAdditionalDiagnoses(newAdditional)
+                          }} 
+                          placeholder="e.g., F10.20" 
+                          className="flex-1" 
+                        />
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <Label className="text-sm font-medium sm:min-w-[120px]">Description:</Label>
+                        <Input 
+                          value={dx.description} 
+                          onChange={(e) => {
+                            const newAdditional = [...additionalDiagnoses]
+                            newAdditional[idx] = { ...dx, description: e.target.value }
+                            setAdditionalDiagnoses(newAdditional)
+                          }} 
+                          placeholder="e.g., Alcohol Use Disorder" 
+                          className="flex-1" 
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Current Mental Status */}
@@ -596,7 +693,18 @@ export default function SessionProgressNotePage() {
                 <div className="space-y-3">
                   <Label className="text-base font-semibold">Treatment Plan Progress</Label>
                   <div className="bg-muted/50 p-4 rounded-lg border space-y-3">
-                    <div><p className="text-sm font-semibold mb-2">Objectives</p><p className="text-sm text-muted-foreground">1. Stay sober and maintain healthy relationships</p></div>
+                    <div>
+                      <p className="text-sm font-semibold mb-2">Objectives</p>
+                      {treatmentObjectivesDetailed.length > 0 ? (
+                        <ul className="list-disc pl-5 space-y-1">
+                          {treatmentObjectivesDetailed.map((obj, idx) => (
+                            <li key={`${idx}-${obj.TreatmentObjectiveDescription.substring(0, 12)}`} className="text-sm text-muted-foreground">{obj.TreatmentObjectiveDescription}</li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">No objectives available</p>
+                      )}
+                    </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                       <Label className="text-sm sm:whitespace-nowrap sm:min-w-[80px]">Progress: *</Label>
                       <select value={treatmentProgress} onChange={(e) => setTreatmentProgress(e.target.value)} className="flex-1 lg:w-auto h-10 px-3 rounded-md border border-input bg-background text-sm">
