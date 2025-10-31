@@ -577,8 +577,7 @@ async function saveNote(formData: any, cookies: string) {
       msg: '9',
       savenoterequest: JSON.stringify(formData),
       correlationid: crypto.randomUUID(),
-      tnrac: TN_RAC,
-      tnv: '2025.8.8.96.230741'
+      tnrac: TN_RAC
     }).toString()
   })
 
