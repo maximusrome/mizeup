@@ -26,6 +26,10 @@ interface RevenueData {
   }
 }
 
+// Note shape returned by /api/revenue with joined session
+type SessionLite = { id: string; date: string }
+type ProgressNoteWithSession = ProgressNote & { sessions?: SessionLite | SessionLite[] }
+
 // Chart component with period selection and optional cumulative overlay
 function RevenueChart({ 
   data, 
@@ -295,7 +299,7 @@ export default function RevenuePage() {
           throw new Error(result.error || 'Failed to fetch revenue data')
         }
 
-        const notes: ProgressNote[] = result.data || []
+        const notes: ProgressNoteWithSession[] = result.data || []
         
         // Only count synced notes
         const syncedNotes = notes.filter(n => n.synced_to_therapynotes)
@@ -305,12 +309,13 @@ export default function RevenuePage() {
         const dailyRevenueMap = new Map<string, number>()
         const codeUsageCounts = { '90837': 0, '90785': 0, '99050': 0 }
         
-        syncedNotes.forEach(note => {
+        syncedNotes.forEach((note) => {
           // Handle both array and object format from Supabase join
-          const session = Array.isArray((note as any).sessions) 
-            ? (note as any).sessions[0] 
-            : (note as any).sessions
-          if (!session?.date) return
+          const joined = note.sessions
+          const session: SessionLite | undefined = Array.isArray(joined) ? joined[0] : joined
+          if (!session?.date) {
+            return
+          }
           
           // Count regular session code (every synced note has this)
           codeUsageCounts['90837']++
