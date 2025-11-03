@@ -658,7 +658,7 @@ export default function SessionProgressNotePage() {
                 <div className="space-y-4">
                   <div>
                     <Label className="text-base font-semibold">Add-on Codes</Label>
-                    <p className="text-sm text-muted-foreground mt-1">If you would answer "Yes" to any of these questions, select it to automatically add the proper documentation to your note.</p>
+                    <p className="text-sm text-muted-foreground mt-1">If you would answer &quot;Yes&quot; to any of these questions, select it to automatically add the proper documentation to your note.</p>
                   </div>
                   
                   {/* Interactive Complexity */}
