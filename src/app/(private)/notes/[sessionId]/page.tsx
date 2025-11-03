@@ -172,8 +172,6 @@ const SuggestionField = ({ options, value, onChange, placeholder, label }: { opt
 export default function SessionProgressNotePage() {
   const { sessionId } = useParams()
   const router = useRouter()
-  const [open1, setOpen1] = useState(true)
-  const [open2, setOpen2] = useState(true)
   const [open3, setOpen3] = useState(true)
   const [questions, setQuestions] = useState(QUESTIONS)
   const [saving, setSaving] = useState(false)
@@ -466,73 +464,18 @@ export default function SessionProgressNotePage() {
     return `${(end.getTime() - start.getTime()) / 60000} minutes`
   }
 
-  const formatHeaderInfo = () => {
-    if (!session) return ''
-    const date = new Date(session.date)
-    const weekday = date.toLocaleDateString('en-US', { weekday: 'long' })
-    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-    const timeRange = `${formatTime(session.start_time)} - ${formatTime(session.end_time)}`
-    const clientName = session.clients?.name || ''
-    return `${clientName ? clientName + ' • ' : ''}${weekday}, ${formattedDate} • ${timeRange}`
-  }
-
   return (
     <div className="container mx-auto px-4 max-w-6xl py-8">
           <Button variant="ghost" size="sm" onClick={() => router.push('/calendar')} className="mb-4">← Back</Button>
           
           <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-            <div>
-              <h1 className="text-3xl font-bold">Progress Note</h1>
-              <p className="mt-1 text-base font-medium text-foreground/80">{formatHeaderInfo()}</p>
-            </div>
+            <h1 className="text-3xl font-bold">Progress Note</h1>
             {tnPrefilled && (
               <span className="text-xs text-muted-foreground">Prefilled from TherapyNotes</span>
             )}
           </div>
           
           <div className="space-y-4 mb-6">
-            <Section title="Interactive Complexity +90785" open={open1} onToggle={() => setOpen1(!open1)} reimbursement="+$12.96">
-              {questions.filter(q => q.code === '90785').map(q => (
-                <div key={q.id}>
-                  <div className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
-                    <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
-                      {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
-                    </div>
-                    <span className="text-sm flex-1">{q.text}</span>
-                  </div>
-                  {q.answer && (
-                    <div className="ml-6 mb-2">
-                      <div className="bg-muted/30 border border-success/30 rounded-lg p-3 mb-2">
-                        <p className="text-sm">{q.note}</p>
-                      </div>
-                      <p className="text-sm text-success font-medium ml-3">Selected for note</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </Section>
-
-            <Section title="After Hours +99050" open={open2} onToggle={() => setOpen2(!open2)} reimbursement="+$16.58">
-              {questions.filter(q => q.code === '99050').map(q => (
-                <div key={q.id}>
-                  <div className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
-                    <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
-                      {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
-                    </div>
-                    <span className="text-sm flex-1">{q.text}</span>
-                  </div>
-                  {q.answer && (
-                    <div className="ml-6 mb-2">
-                      <div className="bg-muted/30 border border-success/30 rounded-lg p-3 mb-2">
-                        <p className="text-sm">{q.note}</p>
-                      </div>
-                      <p className="text-sm text-success font-medium ml-3">Selected for note</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </Section>
-            
             <Section title="Progress Note Builder" open={open3} onToggle={() => setOpen3(!open3)}>
               <div className="space-y-6">
                 {/* Session Info */}
@@ -707,6 +650,54 @@ export default function SessionProgressNotePage() {
                         <option value="">Select progress...</option>
                         {['Improved', 'Progressing', 'Maintained', 'No Progress', 'Regressed', 'Variable', 'Deferred', 'Not Addressed', 'On Hold', 'Completed'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                       </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Add-on Codes */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-base font-semibold">Add-on Codes</Label>
+                    <p className="text-sm text-muted-foreground mt-1">If you would answer &quot;Yes&quot; to any of these questions, select it to automatically add the proper documentation to your note.</p>
+                  </div>
+                  
+                  {/* Interactive Complexity */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
+                      <span className="font-medium text-sm">Interactive Complexity +90785</span>
+                      <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
+                        +$12.96
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {questions.filter(q => q.code === '90785').map(q => (
+                        <div key={q.id} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
+                          <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                            {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                          </div>
+                          <span className="text-sm flex-1">{q.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* After Hours */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
+                      <span className="font-medium text-sm">After Hours +99050</span>
+                      <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
+                        +$16.58
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {questions.filter(q => q.code === '99050').map(q => (
+                        <div key={q.id} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
+                          <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                            {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                          </div>
+                          <span className="text-sm flex-1">{q.text}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
