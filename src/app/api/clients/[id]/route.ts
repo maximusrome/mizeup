@@ -37,7 +37,10 @@ export async function PUT(
     }
     
     const client = await updateClient(id, {
-      name: body.name.trim()
+      name: body.name.trim(),
+      ...(body.phone_number !== undefined && { 
+        phone_number: body.phone_number?.trim() || null 
+      })
     })
     
     return NextResponse.json({ data: client })

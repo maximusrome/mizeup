@@ -658,35 +658,26 @@ export async function getTherapistSettings(): Promise<Therapist> {
 
 // Update therapist reminder settings
 export async function updateTherapistSettings(settings: {
-  phone_number?: string
-  reminder_enabled?: boolean
-  reminder_time?: string
   reminder_message_template?: string
 }): Promise<Therapist> {
   const user = await getCurrentUser()
   const supabase = await createSupabaseClient()
   
-  // Generate API key if enabling reminders for first time
-  const updateData: {
-    phone_number?: string
-    reminder_enabled?: boolean
-    reminder_time?: string
-    reminder_message_template?: string
-    reminder_api_key?: string
-    updated_at: string
-  } = { ...settings, updated_at: new Date().toISOString() }
+  // Build update object
+  const updateData: Record<string, unknown> = {
+    ...settings,
+    updated_at: new Date().toISOString()
+  }
   
-  if (settings.reminder_enabled) {
-    const { data: existing } = await supabase
-      .from('therapists')
-      .select('reminder_api_key')
-      .eq('id', user.id)
-      .single()
-    
-    if (!existing?.reminder_api_key) {
-      // Generate 64-character hex API key
-      updateData.reminder_api_key = randomBytes(32).toString('hex')
-    }
+  // Generate API key if it doesn't exist
+  const { data: existing } = await supabase
+    .from('therapists')
+    .select('reminder_api_key')
+    .eq('id', user.id)
+    .single()
+  
+  if (!existing?.reminder_api_key) {
+    updateData.reminder_api_key = randomBytes(32).toString('hex')
   }
   
   const { data, error } = await supabase
@@ -704,13 +695,17 @@ export async function updateTherapistSettings(settings: {
 }
 
 // Get tomorrow's sessions for reminders
-export async function getTomorrowSessions(therapistId: string, date: string): Promise<{
+// Accepts optional supabase client for API key-authenticated requests
+export async function getTomorrowSessions(
+  therapistId: string, 
+  date: string,
+  supabaseClient?: Awaited<ReturnType<typeof createSupabaseClient>>
+): Promise<{
   clientName: string
   phoneNumber: string
   sessionTime: string
-  startTime: string
 }[]> {
-  const supabase = await createSupabaseClient()
+  const supabase = supabaseClient || await createSupabaseClient()
   
   // First, get all sessions for the date with client IDs
   const { data: sessionsData, error: sessionsError } = await supabase
@@ -766,18 +761,17 @@ export async function getTomorrowSessions(therapistId: string, date: string): Pr
       
       return {
         clientName: client.name,
-        phoneNumber: phoneNumber,
-        sessionTime: formatTimeForReminder(s.start_time),
-        startTime: s.start_time
+        phoneNumber,
+        sessionTime: formatTimeForReminder(s.start_time)
       }
     })
 }
 
-// Helper function to format time for reminders
+// Helper function to format time for reminders (e.g., "3pm", "1pm", "11pm")
 function formatTimeForReminder(time: string): string {
-  const [hours, minutes] = time.split(':')
+  const [hours] = time.split(':')
   const hour = parseInt(hours)
-  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const ampm = hour >= 12 ? 'pm' : 'am'
   const hour12 = hour % 12 || 12
-  return `${hour12}:${minutes} ${ampm}`
+  return `${hour12}${ampm}`
 }

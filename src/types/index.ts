@@ -5,9 +5,6 @@ export interface Therapist {
   name: string
   created_at: string
   updated_at: string
-  phone_number?: string
-  reminder_enabled?: boolean
-  reminder_time?: string
   reminder_message_template?: string
   reminder_api_key?: string
 }
@@ -113,7 +110,7 @@ export interface CreateClientRequest {
 
 export interface UpdateClientRequest {
   name: string
-  phone_number?: string
+  phone_number?: string | null
 }
 
 export interface CreateSessionRequest {

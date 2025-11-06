@@ -29,7 +29,8 @@ export async function POST(request: NextRequest) {
     }
     
     const client = await createClient({
-      name: body.name.trim()
+      name: body.name.trim(),
+      ...(body.phone_number && { phone_number: body.phone_number.trim() })
     })
     
     return NextResponse.json({ data: client }, { status: 201 })

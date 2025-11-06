@@ -2,6 +2,7 @@ import type {
   Client, 
   Session, 
   CreateClientRequest,
+  UpdateClientRequest,
   CreateSessionRequest,
   UpdateSessionRequest,
   ApiResponse 
@@ -35,6 +36,35 @@ export async function createClient(request: CreateClientRequest): Promise<Client
   }
   
   return result.data!
+}
+
+export async function updateClient(id: string, request: UpdateClientRequest): Promise<Client> {
+  const response = await fetch(`/api/clients/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  })
+  
+  const result: ApiResponse<Client> = await response.json()
+  
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to update client')
+  }
+  
+  return result.data!
+}
+
+export async function deleteClient(id: string): Promise<void> {
+  const response = await fetch(`/api/clients/${id}`, {
+    method: 'DELETE',
+  })
+  
+  if (!response.ok) {
+    const result: ApiResponse<never> = await response.json()
+    throw new Error(result.error || 'Failed to delete client')
+  }
 }
 
 // SESSION API FUNCTIONS
