@@ -36,11 +36,6 @@ export async function GET(request: NextRequest) {
     // Get sessions
     const sessions = await getTomorrowSessions(therapist.id, tomorrowDate)
     
-    // Debug: Check what we got
-    console.log('Tomorrow date:', tomorrowDate)
-    console.log('Sessions found:', sessions.length)
-    console.log('Sessions:', JSON.stringify(sessions, null, 2))
-    
     // Format messages
     const template = therapist.reminder_message_template || 'Hey {clientName}, looking forward to our session tomorrow at {sessionTime}.'
     const reminders = sessions.map(s => ({
@@ -53,12 +48,7 @@ export async function GET(request: NextRequest) {
     }))
     
     return NextResponse.json({ 
-      reminders,
-      debug: {
-        tomorrowDate,
-        sessionsCount: sessions.length,
-        sessions: sessions
-      }
+      reminders
     })
   } catch (error) {
     console.error('Reminder API error:', error)
