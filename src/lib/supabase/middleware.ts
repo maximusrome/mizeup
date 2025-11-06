@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/update-password') &&
     !request.nextUrl.pathname.startsWith('/confirm') &&
     !request.nextUrl.pathname.startsWith('/api/contact') &&
+    !request.nextUrl.pathname.startsWith('/api/reminders/tomorrow') &&
     request.nextUrl.pathname !== '/'
   ) {
     // no user, potentially respond by redirecting the user to the login page

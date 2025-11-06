@@ -5,6 +5,11 @@ export interface Therapist {
   name: string
   created_at: string
   updated_at: string
+  phone_number?: string
+  reminder_enabled?: boolean
+  reminder_time?: string
+  reminder_message_template?: string
+  reminder_api_key?: string
 }
 
 export interface Client {
@@ -13,6 +18,7 @@ export interface Client {
   name: string
   therapynotes_patient_id?: number
   therapynotes_encrypted_patient_id?: string
+  phone_number?: string
   created_at: string
   updated_at: string
 }
@@ -102,10 +108,12 @@ export interface ProgressNote {
 // API request/response types
 export interface CreateClientRequest {
   name: string
+  phone_number?: string
 }
 
 export interface UpdateClientRequest {
   name: string
+  phone_number?: string
 }
 
 export interface CreateSessionRequest {

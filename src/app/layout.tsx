@@ -19,6 +19,22 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
+  openGraph: {
+    title: "MizeUp - Optimize Your Therapy Practice",
+    description: "Stop leaving money on the table with hidden billing codes. Earn $500+ monthly while saving 3+ hours weekly on documentation.",
+    url: 'https://www.mizeup.com',
+    siteName: 'MizeUp',
+    locale: 'en_US',
+    type: 'website',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 };
 
 export default function RootLayout({
