@@ -8,6 +8,7 @@ import {
   Calendar,
   DollarSign, 
   User, 
+  Users,
   Menu, 
   X,
   ChevronLeft,
@@ -17,6 +18,7 @@ import {
 const navigation = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Revenue', href: '/revenue', icon: DollarSign },
+  { name: 'Clients', href: '/clients', icon: Users },
 ]
 
 export default function Sidebar() {

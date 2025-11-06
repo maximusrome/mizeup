@@ -9,15 +9,14 @@ import { Textarea } from '@/components/ui/textarea'
 
 export default function ReminderSettings() {
   const [reminderSettings, setReminderSettings] = useState({
-    phone_number: '',
-    reminder_enabled: false,
-    reminder_time: '17:00',
     reminder_message_template: '',
     reminder_api_key: ''
   })
   const [showGuide, setShowGuide] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [apiUrl, setApiUrl] = useState('')
+  const [copied, setCopied] = useState(false)
 
   // Load settings on mount
   useEffect(() => {
@@ -26,12 +25,12 @@ export default function ReminderSettings() {
       .then(({ data }) => {
         if (data) {
           setReminderSettings({
-            phone_number: data.phone_number || '',
-            reminder_enabled: data.reminder_enabled || false,
-            reminder_time: data.reminder_time || '17:00',
-            reminder_message_template: data.reminder_message_template || 'Hey {clientName}, looking forward to our session tomorrow at {sessionTime}.',
+            reminder_message_template: data.reminder_message_template || 'Hey {clientName}, looking forward to our session tomorrow at {sessionTime}',
             reminder_api_key: data.reminder_api_key || ''
           })
+          if (data.reminder_api_key) {
+            setApiUrl(`${window.location.origin}/api/reminders/tomorrow?key=${data.reminder_api_key}`)
+          }
         }
       })
       .catch(() => {
@@ -41,6 +40,13 @@ export default function ReminderSettings() {
 
   // Save settings
   const saveReminderSettings = async () => {
+    // Validate template isn't empty
+    if (!reminderSettings.reminder_message_template.trim()) {
+      setSaveMessage('Message template cannot be empty')
+      setTimeout(() => setSaveMessage(''), 3000)
+      return
+    }
+    
     setIsSaving(true)
     setSaveMessage('')
     
@@ -59,6 +65,11 @@ export default function ReminderSettings() {
         reminder_api_key: data.reminder_api_key || prev.reminder_api_key 
       }))
       
+      // Update API URL if we got a new API key
+      if (data.reminder_api_key) {
+        setApiUrl(`${window.location.origin}/api/reminders/tomorrow?key=${data.reminder_api_key}`)
+      }
+      
       setSaveMessage('Settings saved successfully!')
       setTimeout(() => setSaveMessage(''), 3000)
     } catch {
@@ -68,21 +79,6 @@ export default function ReminderSettings() {
     }
   }
 
-  const formatTimeDisplay = (time24: string): string => {
-    const [hours, minutes] = time24.split(':')
-    const hour = parseInt(hours)
-    const ampm = hour >= 12 ? 'PM' : 'AM'
-    const hour12 = hour % 12 || 12
-    return `${hour12}:${minutes} ${ampm}`
-  }
-
-  const timeOptions = [
-    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
-    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
-    '20:00', '20:30', '21:00', '21:30', '22:00'
-  ]
-
   return (
     <Card>
       <CardHeader>
@@ -90,64 +86,15 @@ export default function ReminderSettings() {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label>Your Phone Number</Label>
-          <Input
-            type="tel"
-            value={reminderSettings.phone_number}
-            onChange={(e) => setReminderSettings({ ...reminderSettings, phone_number: e.target.value })}
-            placeholder="(555) 123-4567"
+          <Label>Message template</Label>
+          <Textarea
+            value={reminderSettings.reminder_message_template}
+            onChange={(e) => setReminderSettings({ ...reminderSettings, reminder_message_template: e.target.value })}
+            rows={3}
+            placeholder="Use {clientName} and {sessionTime}"
+            className="resize-none"
           />
-          <p className="text-xs text-muted-foreground">
-            Optional: Used to identify you in the system
-          </p>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="reminder-enabled"
-            checked={reminderSettings.reminder_enabled}
-            onChange={(e) => setReminderSettings({ ...reminderSettings, reminder_enabled: e.target.checked })}
-            className="w-4 h-4 cursor-pointer"
-          />
-          <Label htmlFor="reminder-enabled" className="cursor-pointer">Enable automatic reminders</Label>
-        </div>
-        
-        {reminderSettings.reminder_enabled && (
-          <>
-            <div className="space-y-2">
-              <Label>Send reminders at</Label>
-              <select
-                value={reminderSettings.reminder_time}
-                onChange={(e) => setReminderSettings({ ...reminderSettings, reminder_time: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md bg-background"
-              >
-                {timeOptions.map(time => (
-                  <option key={time} value={time}>
-                    {formatTimeDisplay(time)}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Reminders will be sent the day before each session
-              </p>
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Message template</Label>
-              <Textarea
-                value={reminderSettings.reminder_message_template}
-                onChange={(e) => setReminderSettings({ ...reminderSettings, reminder_message_template: e.target.value })}
-                rows={3}
-                placeholder="Use {clientName} and {sessionTime}"
-                className="resize-none"
-              />
-              <p className="text-xs text-muted-foreground">
-                Variables: <code className="bg-muted px-1 rounded">{'{clientName}'}</code> <code className="bg-muted px-1 rounded">{'{sessionTime}'}</code>
-              </p>
-            </div>
-          </>
-        )}
         
         <div className="flex items-center gap-3">
           <Button onClick={saveReminderSettings} disabled={isSaving}>
@@ -160,47 +107,115 @@ export default function ReminderSettings() {
           )}
         </div>
         
-        {reminderSettings.reminder_enabled && reminderSettings.reminder_api_key && (
-          <div className="mt-4 p-4 bg-muted rounded-lg space-y-3">
-            <p className="text-sm font-medium">iPhone Setup Required</p>
-            <p className="text-sm text-muted-foreground">
-              To complete the setup, open the detailed setup guide on your iPhone and follow the step-by-step instructions.
-            </p>
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => window.open('/account/reminders-setup', '_blank')} 
-                size="sm"
-              >
-                Open Setup Guide (iPhone)
-              </Button>
-              <Button variant="outline" onClick={() => setShowGuide(!showGuide)} size="sm">
-                {showGuide ? 'Hide' : 'Show'} Quick Guide
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Opens a simple 4-step guide. Keep it open on your iPhone while setting up in Shortcuts app (~3 minutes).
-            </p>
-          </div>
-        )}
-        
-        {showGuide && (
-          <div className="mt-4 p-4 border rounded-lg space-y-3 bg-background">
-            <h4 className="font-medium">Quick Setup Overview</h4>
-            <p className="text-sm text-muted-foreground">
-              For detailed step-by-step instructions, open the full setup guide on your iPhone.
-            </p>
-            <ol className="list-decimal list-inside space-y-2 text-sm">
-              <li>Open <strong>&quot;Open Setup Guide (iPhone)&quot;</strong> button above on your iPhone</li>
-              <li>Follow the 9-step guide to create the shortcut manually</li>
-              <li>Create a daily automation at <strong>{formatTimeDisplay(reminderSettings.reminder_time)}</strong></li>
-              <li>Turn OFF &quot;Ask Before Running&quot; for full automation</li>
-            </ol>
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> iOS doesn&apos;t allow importing shortcut files directly. 
-                You&apos;ll need to create the shortcut manually following the detailed guide.
-              </p>
-            </div>
+        {reminderSettings.reminder_api_key && (
+          <div className="mt-4 space-y-3">
+            <button
+              onClick={() => setShowGuide(!showGuide)}
+              className="w-full flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+            >
+              <span className="text-sm font-medium">iPhone Shortcuts Setup</span>
+              <span className={`transition-transform ${showGuide ? 'rotate-180' : ''}`}>▼</span>
+            </button>
+            
+            {showGuide && (
+              <div className="p-4 border rounded-lg space-y-4 bg-background">
+                {/* Step 1: Copy URL */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                    <p className="text-sm font-medium">Copy Your API URL</p>
+                  </div>
+                  <div className="ml-8 space-y-2">
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={apiUrl}
+                        className="font-mono text-xs flex-1 h-8"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(apiUrl)
+                            setCopied(true)
+                            setTimeout(() => setCopied(false), 2000)
+                          } catch {
+                            // Clipboard API failed, ignore
+                          }
+                        }}
+                      >
+                        {copied ? 'Copied!' : 'Copy'}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Open the Shortcuts app on your iPhone, then continue below.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Step 2: Build Shortcut */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                    <p className="text-sm font-medium">Build the Shortcut</p>
+                  </div>
+                  <div className="ml-8 space-y-3">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">1. Add &quot;Get Contents of URL&quot;</p>
+                      <p className="text-xs text-muted-foreground ml-4">• Paste your API URL</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">2. Add &quot;Repeat with Each&quot;</p>
+                      <p className="text-xs text-muted-foreground ml-4">• Link to: <code className="bg-muted px-1 rounded">Contents of URL</code></p>
+                    </div>
+                    <div className="pl-4 border-l-2 border-muted space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Inside the loop:</p>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">3. Add &quot;Get Value for Key&quot;</p>
+                        <p className="text-xs text-muted-foreground ml-4">• Input: <code className="bg-muted px-1 rounded">Repeat Item</code></p>
+                        <p className="text-xs text-muted-foreground ml-4">• Key: <code className="bg-muted px-1 rounded">phoneNumber</code></p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">4. Add &quot;Get Value for Key&quot;</p>
+                        <p className="text-xs text-muted-foreground ml-4">• Input: <code className="bg-muted px-1 rounded">Repeat Item</code></p>
+                        <p className="text-xs text-muted-foreground ml-4">• Key: <code className="bg-muted px-1 rounded">message</code></p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">5. Add &quot;Send Message&quot;</p>
+                        <p className="text-xs text-muted-foreground ml-4">• Recipients: <code className="bg-muted px-1 rounded">Dictionary Value</code> (phone)</p>
+                        <p className="text-xs text-muted-foreground ml-4">• Message: <code className="bg-muted px-1 rounded">Dictionary Value</code> (message)</p>
+                        <p className="text-xs text-muted-foreground ml-4">• Turn OFF &quot;Show Compose Sheet&quot;</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: Name & Test */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
+                    <p className="text-sm font-medium">Name & Test</p>
+                  </div>
+                  <div className="ml-8 space-y-1">
+                    <p className="text-xs text-muted-foreground">• Rename to &quot;MizeUp Reminders&quot;</p>
+                    <p className="text-xs text-muted-foreground">• Tap play button (▶️) to test</p>
+                  </div>
+                </div>
+
+                {/* Step 4: Automation */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-xs font-bold">4</span>
+                    <p className="text-sm font-medium">Create Automation (Optional)</p>
+                  </div>
+                  <div className="ml-8 space-y-1">
+                    <p className="text-xs text-muted-foreground">• Go to &quot;Automation&quot; tab → &quot;+&quot; → &quot;Time of Day&quot;</p>
+                    <p className="text-xs text-muted-foreground">• Set time → Add &quot;Run Shortcut&quot; → Select &quot;MizeUp Reminders&quot;</p>
+                    <p className="text-xs text-muted-foreground">• Turn OFF &quot;Ask Before Running&quot;</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

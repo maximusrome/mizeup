@@ -16,6 +16,15 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
+    
+    // Validate request body
+    if (body.reminder_message_template !== undefined && typeof body.reminder_message_template !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid message template format' },
+        { status: 400 }
+      )
+    }
+    
     const settings = await updateTherapistSettings(body)
     return NextResponse.json({ data: settings })
   } catch (error) {
