@@ -25,6 +25,7 @@ const TIME_STEP = 900 // seconds (15 minutes)
 
 const sessionSchema = z.object({
   clientName: z.string().min(1, 'Client name is required').max(CLIENT_NAME_MAX_LENGTH, 'Client name is too long'),
+  clientPhone: z.string().optional(),
   startTime: z.string().min(1, 'Start time is required'),
   endTime: z.string().min(1, 'End time is required'),
   date: z.string().min(1, 'Date is required'),
@@ -83,6 +84,7 @@ export default function SessionModal({
     resolver: zodResolver(sessionSchema),
     defaultValues: {
       clientName: '',
+      clientPhone: '',
       startTime: '13:00',
       endTime: '14:00',
       date: selectedDate,
@@ -103,6 +105,7 @@ export default function SessionModal({
     if (editingSession) {
       form.reset({
         clientName: editingSession.clients?.name || '',
+        clientPhone: '',
         startTime: editingSession.start_time,
         endTime: editingSession.end_time,
         date: editingSession.date,
@@ -113,6 +116,7 @@ export default function SessionModal({
     } else {
       form.reset({
         clientName: '',
+        clientPhone: '',
         startTime: '13:00',
         endTime: '14:00',
         date: selectedDate,
@@ -238,7 +242,10 @@ export default function SessionModal({
       // Find existing client or create new one
       let client = clients.find(c => c.name === data.clientName.trim())
       if (!client) {
-        client = await createClient({ name: data.clientName.trim() })
+        client = await createClient({ 
+          name: data.clientName.trim(),
+          phone_number: data.clientPhone || undefined
+        })
         setClients(prev => [...prev, client!])
       }
 
@@ -397,6 +404,27 @@ export default function SessionModal({
                         )}
                       </div>
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="clientPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="tel"
+                        placeholder="(555) 123-4567"
+                        {...field}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Used for automated session reminders
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

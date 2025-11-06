@@ -113,11 +113,12 @@ export async function createClient(request: CreateClientRequest): Promise<Client
   const user = await getCurrentUser()
   const supabase = await createSupabaseClient()
   
-  const { data, error } = await supabase
+  const { data, error} = await supabase
     .from('clients')
     .insert({
       therapist_id: user.id,
-      name: request.name
+      name: request.name,
+      ...(request.phone_number && { phone_number: request.phone_number })
     })
     .select()
     .single()
@@ -137,6 +138,7 @@ export async function updateClient(id: string, request: UpdateClientRequest): Pr
     .from('clients')
     .update({
       name: request.name,
+      ...(request.phone_number !== undefined && { phone_number: request.phone_number }),
       updated_at: new Date().toISOString()
     })
     .eq('id', id)
@@ -631,4 +633,129 @@ export async function updateNote(id: string, request: UpdateNoteRequest): Promis
   }
   
   return data
+}
+
+// REMINDER FUNCTIONS
+
+// Get therapist reminder settings
+export async function getTherapistSettings(): Promise<Therapist> {
+  const user = await getCurrentUser()
+  const supabase = await createSupabaseClient()
+  
+  const { data, error } = await supabase
+    .from('therapists')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+  
+  if (error) {
+    throw new Error(`Failed to get therapist settings: ${error.message}`)
+  }
+  
+  return data
+}
+
+// Update therapist reminder settings
+export async function updateTherapistSettings(settings: {
+  phone_number?: string
+  reminder_enabled?: boolean
+  reminder_time?: string
+  reminder_message_template?: string
+}): Promise<Therapist> {
+  const user = await getCurrentUser()
+  const supabase = await createSupabaseClient()
+  
+  // Generate API key if enabling reminders for first time
+  const updateData: {
+    phone_number?: string
+    reminder_enabled?: boolean
+    reminder_time?: string
+    reminder_message_template?: string
+    reminder_api_key?: string
+    updated_at: string
+  } = { ...settings, updated_at: new Date().toISOString() }
+  
+  if (settings.reminder_enabled) {
+    const { data: existing } = await supabase
+      .from('therapists')
+      .select('reminder_api_key')
+      .eq('id', user.id)
+      .single()
+    
+    if (!existing?.reminder_api_key) {
+      // Generate 64-character hex API key
+      const crypto = require('crypto')
+      updateData.reminder_api_key = crypto.randomBytes(32).toString('hex')
+    }
+  }
+  
+  const { data, error } = await supabase
+    .from('therapists')
+    .update(updateData)
+    .eq('id', user.id)
+    .select()
+    .single()
+  
+  if (error) {
+    throw new Error(`Failed to update settings: ${error.message}`)
+  }
+  
+  return data
+}
+
+// Get tomorrow's sessions for reminders
+export async function getTomorrowSessions(therapistId: string, date: string): Promise<{
+  clientName: string
+  phoneNumber: string
+  sessionTime: string
+  startTime: string
+}[]> {
+  const supabase = await createSupabaseClient()
+  
+  const { data, error } = await supabase
+    .from('sessions')
+    .select(`
+      start_time,
+      clients:client_id (
+        name,
+        phone_number
+      )
+    `)
+    .eq('therapist_id', therapistId)
+    .eq('date', date)
+    .order('start_time')
+  
+  if (error) {
+    throw new Error(`Failed to get sessions: ${error.message}`)
+  }
+  
+  // Filter out sessions without phone numbers and format data
+  return (data || [])
+    .filter(s => s.clients?.phone_number)
+    .map(s => {
+      // Format phone number (remove any non-digit characters, ensure it's a valid format)
+      let phoneNumber = s.clients.phone_number.replace(/\D/g, '') // Remove non-digits
+      // If it's 10 digits, add +1 for US numbers
+      if (phoneNumber.length === 10) {
+        phoneNumber = `+1${phoneNumber}`
+      } else if (!phoneNumber.startsWith('+')) {
+        phoneNumber = `+${phoneNumber}`
+      }
+      
+      return {
+        clientName: s.clients.name,
+        phoneNumber: phoneNumber,
+        sessionTime: formatTimeForReminder(s.start_time),
+        startTime: s.start_time
+      }
+    })
+}
+
+// Helper function to format time for reminders
+function formatTimeForReminder(time: string): string {
+  const [hours, minutes] = time.split(':')
+  const hour = parseInt(hours)
+  const ampm = hour >= 12 ? 'PM' : 'AM'
+  const hour12 = hour % 12 || 12
+  return `${hour12}:${minutes} ${ampm}`
 }

@@ -1,5 +1,6 @@
 import SignOutButton from './_components/sign-out-button'
 import TherapyNotesCredentials from './_components/therapynotes-form'
+import ReminderSettings from './_components/reminder-settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
 import { User, Mail, Calendar } from 'lucide-react'
@@ -59,6 +60,9 @@ export default async function AccountPage() {
 
               {/* TherapyNotes Integration */}
               <TherapyNotesCredentials />
+
+              {/* Session Reminders */}
+              <ReminderSettings />
 
               {/* Log Out Card */}
               <Card>
