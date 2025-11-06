@@ -19,7 +19,7 @@ export async function GET() {
         'Content-Disposition': 'attachment; filename="MizeUp-Reminders.shortcut"'
       }
     })
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Failed to generate shortcut' },
       { status: 500 }

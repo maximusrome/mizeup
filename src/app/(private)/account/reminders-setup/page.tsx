@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
 export default function RemindersSetupPage() {
   const [apiKey, setApiKey] = useState('')
@@ -77,13 +76,13 @@ export default function RemindersSetupPage() {
             <div className="space-y-2">
               <p className="text-sm font-medium">In Shortcuts app:</p>
               <ol className="list-decimal list-inside space-y-1 text-sm ml-2">
-                <li>Tap <strong>"+"</strong> (top right)</li>
-                <li>Tap <strong>"Add Action"</strong></li>
-                <li>Search <strong>"Get Contents of URL"</strong> → Select it</li>
+                <li>Tap <strong>&quot;+&quot;</strong> (top right)</li>
+                <li>Tap <strong>&quot;Add Action&quot;</strong></li>
+                <li>Search <strong>&quot;Get Contents of URL&quot;</strong> → Select it</li>
               </ol>
             </div>
             <div className="mt-4 p-3 bg-muted rounded-lg">
-              <p className="text-xs font-medium mb-2">Copy this URL and paste it in the "URL" field:</p>
+              <p className="text-xs font-medium mb-2">Copy this URL and paste it in the &quot;URL&quot; field:</p>
               <div className="flex gap-2">
                 <Input
                   readOnly
@@ -117,48 +116,48 @@ export default function RemindersSetupPage() {
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-sm font-medium mb-1">Action 1: Convert Rich Text to Dictionary</p>
                   <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                    <li>Tap <strong>"+"</strong> below "Get Contents of URL"</li>
-                    <li>Search <strong>"Get Dictionary from Input"</strong> → Select it</li>
-                    <li>Tap the <strong>"Input"</strong> field → Select <strong>"Contents of URL"</strong> (from previous action)</li>
+                    <li>Tap <strong>&quot;+&quot;</strong> below &quot;Get Contents of URL&quot;</li>
+                    <li>Search <strong>&quot;Get Dictionary from Input&quot;</strong> → Select it</li>
+                    <li>Tap the <strong>&quot;Input&quot;</strong> field → Select <strong>&quot;Contents of URL&quot;</strong> (from previous action)</li>
                     <li>This converts the JSON response to a Dictionary format</li>
                   </ol>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm font-medium mb-1">Action 2: Get "reminders" array</p>
+                  <p className="text-sm font-medium mb-1">Action 2: Get &quot;reminders&quot; array</p>
                   <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                    <li>Tap <strong>"+"</strong> below "Get Dictionary from Input"</li>
-                    <li>Search <strong>"Get Dictionary Value"</strong> → Select it</li>
-                    <li>Tap the <strong>"Input"</strong> field → Select <strong>"Dictionary"</strong> (from previous action)</li>
-                    <li>In the <strong>"Key"</strong> field, type: <code className="bg-background px-1.5 py-0.5 rounded">reminders</code></li>
+                    <li>Tap <strong>&quot;+&quot;</strong> below &quot;Get Dictionary from Input&quot;</li>
+                    <li>Search <strong>&quot;Get Dictionary Value&quot;</strong> → Select it</li>
+                    <li>Tap the <strong>&quot;Input&quot;</strong> field → Select <strong>&quot;Dictionary&quot;</strong> (from previous action)</li>
+                    <li>In the <strong>&quot;Key&quot;</strong> field, type: <code className="bg-background px-1.5 py-0.5 rounded">reminders</code></li>
                   </ol>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-sm font-medium mb-1">Action 3: Loop through reminders</p>
                   <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                    <li>Tap <strong>"+"</strong> below "Get Dictionary Value"</li>
-                    <li>Search <strong>"Repeat with Each"</strong> → Select it</li>
-                    <li>Tap the <strong>"Input"</strong> field → Tap the variable icon (magic wand) → Select <strong>"Dictionary Value"</strong> (this should be the "reminders" array from Action 2)</li>
-                    <li>The loop should now show "Repeat with Each reminder" or "Repeat with Each item in Dictionary Value"</li>
-                    <li><strong>⚠️ CRITICAL:</strong> Make sure it's looping over the "Dictionary Value" from Action 2 (the reminders array), NOT "Contents of URL"</li>
+                    <li>Tap <strong>&quot;+&quot;</strong> below &quot;Get Dictionary Value&quot;</li>
+                    <li>Search <strong>&quot;Repeat with Each&quot;</strong> → Select it</li>
+                    <li>Tap the <strong>&quot;Input&quot;</strong> field → Tap the variable icon (magic wand) → Select <strong>&quot;Dictionary Value&quot;</strong> (this should be the &quot;reminders&quot; array from Action 2)</li>
+                    <li>The loop should now show &quot;Repeat with Each reminder&quot; or &quot;Repeat with Each item in Dictionary Value&quot;</li>
+                    <li><strong>⚠️ CRITICAL:</strong> Make sure it&apos;s looping over the &quot;Dictionary Value&quot; from Action 2 (the reminders array), NOT &quot;Contents of URL&quot;</li>
                   </ol>
                 </div>
               </div>
             </div>
             <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 rounded text-xs">
-              <strong>⚠️ Important:</strong> The "Get Dictionary from Input" step is required because iOS returns Rich Text from URLs. This converts it to a Dictionary so we can extract values.
+              <strong>⚠️ Important:</strong> The &quot;Get Dictionary from Input&quot; step is required because iOS returns Rich Text from URLs. This converts it to a Dictionary so we can extract values.
             </div>
             <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 rounded-lg">
               <p className="text-sm font-medium mb-2">🐛 Debugging Tip:</p>
               <p className="text-xs text-muted-foreground mb-2">
-                To see what's happening, add "Show Notification" actions after key steps:
+                To see what&apos;s happening, add &quot;Show Notification&quot; actions after key steps:
               </p>
               <ul className="text-xs space-y-1 ml-4 list-disc">
-                <li>After "Get Dictionary Value" (reminders): Add "Show Notification" → Shows how many reminders found</li>
-                <li>After getting phoneNumber: Add "Show Notification" → Shows the phone number</li>
-                <li>After getting message: Add "Show Notification" → Shows the message text</li>
+                <li>After &quot;Get Dictionary Value&quot; (reminders): Add &quot;Show Notification&quot; → Shows how many reminders found</li>
+                <li>After getting phoneNumber: Add &quot;Show Notification&quot; → Shows the phone number</li>
+                <li>After getting message: Add &quot;Show Notification&quot; → Shows the message text</li>
               </ul>
               <p className="text-xs text-muted-foreground mt-2">
-                This helps you see exactly what data is being passed to "Send Message"
+                This helps you see exactly what data is being passed to &quot;Send Message&quot;
               </p>
             </div>
           </CardContent>
@@ -174,49 +173,49 @@ export default function RemindersSetupPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground mb-3">
-              <strong>Inside the "Repeat with Each" loop</strong>, add these 3 actions in order:
+              <strong>Inside the &quot;Repeat with Each&quot; loop</strong>, add these 3 actions in order:
             </p>
             <div className="space-y-3">
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-1">📍 Convert Repeat Item to Dictionary (if needed)</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                  <li>Tap <strong>"+"</strong> inside the loop</li>
-                  <li>Search <strong>"Get Dictionary from Input"</strong> → Select it</li>
-                  <li>Tap <strong>"Input"</strong> field → Tap variable icon → Select <strong>"Repeat Item"</strong></li>
+                  <li>Tap <strong>&quot;+&quot;</strong> inside the loop</li>
+                  <li>Search <strong>&quot;Get Dictionary from Input&quot;</strong> → Select it</li>
+                  <li>Tap <strong>&quot;Input&quot;</strong> field → Tap variable icon → Select <strong>&quot;Repeat Item&quot;</strong></li>
                   <li>This converts each reminder item from Rich Text to Dictionary</li>
                 </ol>
-                <p className="text-xs text-muted-foreground mt-2 italic">Skip this if you're not getting conversion errors</p>
+                <p className="text-xs text-muted-foreground mt-2 italic">Skip this if you&apos;re not getting conversion errors</p>
               </div>
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-1">📍 Get phone number</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                  <li>Tap <strong>"+"</strong> below (or after "Get Dictionary from Input" if you added it)</li>
-                  <li>Search <strong>"Get Dictionary Value"</strong> → Select it</li>
-                  <li>Tap <strong>"Input"</strong> field → Tap variable icon → Select either <strong>"Repeat Item"</strong> OR <strong>"Dictionary"</strong> (from "Get Dictionary from Input" if you added it above)</li>
-                  <li>In the <strong>"Key"</strong> field, type: <code className="bg-background px-1.5 py-0.5 rounded">phoneNumber</code></li>
+                  <li>Tap <strong>&quot;+&quot;</strong> below (or after &quot;Get Dictionary from Input&quot; if you added it)</li>
+                  <li>Search <strong>&quot;Get Dictionary Value&quot;</strong> → Select it</li>
+                  <li>Tap <strong>&quot;Input&quot;</strong> field → Tap variable icon → Select either <strong>&quot;Repeat Item&quot;</strong> OR <strong>&quot;Dictionary&quot;</strong> (from &quot;Get Dictionary from Input&quot; if you added it above)</li>
+                  <li>In the <strong>&quot;Key&quot;</strong> field, type: <code className="bg-background px-1.5 py-0.5 rounded">phoneNumber</code></li>
                 </ol>
               </div>
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-1">💬 Get message text</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                  <li>Tap <strong>"+"</strong> below the phone number action</li>
-                  <li>Search <strong>"Get Dictionary Value"</strong> → Select it</li>
-                  <li>Tap <strong>"Input"</strong> field → Tap variable icon → Select the SAME input you used for phone number (either "Repeat Item" OR "Dictionary" from conversion step)</li>
-                  <li>In the <strong>"Key"</strong> field, type: <code className="bg-background px-1.5 py-0.5 rounded">message</code></li>
+                  <li>Tap <strong>&quot;+&quot;</strong> below the phone number action</li>
+                  <li>Search <strong>&quot;Get Dictionary Value&quot;</strong> → Select it</li>
+                  <li>Tap <strong>&quot;Input&quot;</strong> field → Tap variable icon → Select the SAME input you used for phone number (either &quot;Repeat Item&quot; OR &quot;Dictionary&quot; from conversion step)</li>
+                  <li>In the <strong>&quot;Key&quot;</strong> field, type: <code className="bg-background px-1.5 py-0.5 rounded">message</code></li>
                 </ol>
               </div>
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-1">📤 Send message</p>
                 <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                  <li>Tap <strong>"+"</strong> below the message action</li>
-                  <li>Search <strong>"Send Message"</strong> → Select it</li>
-                  <li>Tap <strong>"Recipients"</strong> field → Tap the variable icon (magic wand) → Select <strong>"Dictionary Value"</strong> (the phone number from step 4)</li>
-                  <li>Tap <strong>"Message"</strong> field → Tap the variable icon → Select <strong>"Dictionary Value"</strong> (the message from step 5)</li>
-                  <li>Make sure <strong>"Send via iMessage"</strong> toggle is ON</li>
-                  <li><strong>Important:</strong> Turn OFF <strong>"Show Compose Sheet"</strong> (so it sends automatically)</li>
+                  <li>Tap <strong>&quot;+&quot;</strong> below the message action</li>
+                  <li>Search <strong>&quot;Send Message&quot;</strong> → Select it</li>
+                  <li>Tap <strong>&quot;Recipients&quot;</strong> field → Tap the variable icon (magic wand) → Select <strong>&quot;Dictionary Value&quot;</strong> (the phone number from step 4)</li>
+                  <li>Tap <strong>&quot;Message&quot;</strong> field → Tap the variable icon → Select <strong>&quot;Dictionary Value&quot;</strong> (the message from step 5)</li>
+                  <li>Make sure <strong>&quot;Send via iMessage&quot;</strong> toggle is ON</li>
+                  <li><strong>Important:</strong> Turn OFF <strong>&quot;Show Compose Sheet&quot;</strong> (so it sends automatically)</li>
                 </ol>
                 <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 rounded text-xs">
-                  <strong>⚠️ Common mistake:</strong> Make sure you're selecting the specific "Dictionary Value" outputs from steps 4 and 5, not a generic "Dictionary Value". When you tap the field, look for the variable names that match your previous actions.
+                  <strong>⚠️ Common mistake:</strong> Make sure you&apos;re selecting the specific &quot;Dictionary Value&quot; outputs from steps 4 and 5, not a generic &quot;Dictionary Value&quot;. When you tap the field, look for the variable names that match your previous actions.
                 </div>
               </div>
             </div>
@@ -234,20 +233,20 @@ export default function RemindersSetupPage() {
           <CardContent className="space-y-4">
             <div className="p-3 bg-muted rounded-lg">
               <p className="text-sm font-medium mb-2">Name the shortcut:</p>
-              <p className="text-xs ml-2">Tap "New Shortcut" at top → Rename to <strong>"MizeUp Reminders"</strong> → Tap "Done"</p>
+              <p className="text-xs ml-2">Tap &quot;New Shortcut&quot; at top → Rename to <strong>&quot;MizeUp Reminders&quot;</strong> → Tap &quot;Done&quot;</p>
             </div>
             
             <div className="p-3 bg-muted rounded-lg">
               <p className="text-sm font-medium mb-2">Create automation:</p>
               <ol className="list-decimal list-inside space-y-1 text-xs ml-2">
-                <li>Go to <strong>"Automation"</strong> tab (bottom)</li>
-                <li>Tap <strong>"+"</strong> → <strong>"Time of Day"</strong></li>
+                <li>Go to <strong>&quot;Automation&quot;</strong> tab (bottom)</li>
+                <li>Tap <strong>&quot;+&quot;</strong> → <strong>&quot;Time of Day&quot;</strong></li>
                 <li>Set time to your reminder time</li>
-                <li>Tap <strong>"Next"</strong> → <strong>"Add Action"</strong></li>
-                <li>Search <strong>"Run Shortcut"</strong> → Select <strong>"MizeUp Reminders"</strong></li>
-                <li>Tap <strong>"Next"</strong></li>
-                <li><strong>Turn OFF "Ask Before Running"</strong> ⚠️</li>
-                <li>Tap <strong>"Don't Ask"</strong> → <strong>"Done"</strong></li>
+                <li>Tap <strong>&quot;Next&quot;</strong> → <strong>&quot;Add Action&quot;</strong></li>
+                <li>Search <strong>&quot;Run Shortcut&quot;</strong> → Select <strong>&quot;MizeUp Reminders&quot;</strong></li>
+                <li>Tap <strong>&quot;Next&quot;</strong></li>
+                <li><strong>Turn OFF &quot;Ask Before Running&quot;</strong> ⚠️</li>
+                <li>Tap <strong>&quot;Don&apos;t Ask&quot;</strong> → <strong>&quot;Done&quot;</strong></li>
               </ol>
             </div>
 

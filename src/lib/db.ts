@@ -1,4 +1,5 @@
 import { createClient as createSupabaseClient } from '@/lib/supabase/server'
+import { randomBytes } from 'crypto'
 import type { 
   Therapist, 
   Client, 
@@ -684,8 +685,7 @@ export async function updateTherapistSettings(settings: {
     
     if (!existing?.reminder_api_key) {
       // Generate 64-character hex API key
-      const crypto = require('crypto')
-      updateData.reminder_api_key = crypto.randomBytes(32).toString('hex')
+      updateData.reminder_api_key = randomBytes(32).toString('hex')
     }
   }
   
@@ -729,12 +729,22 @@ export async function getTomorrowSessions(therapistId: string, date: string): Pr
     throw new Error(`Failed to get sessions: ${error.message}`)
   }
   
+  // Type for session with joined client data
+  type SessionWithClient = {
+    start_time: string
+    clients: {
+      name: string
+      phone_number: string | null
+    }[] | null
+  }
+  
   // Filter out sessions without phone numbers and format data
-  return (data || [])
-    .filter(s => s.clients?.phone_number)
-    .map(s => {
+  return ((data || []) as unknown as SessionWithClient[])
+    .filter((s) => s.clients && s.clients.length > 0 && s.clients[0]?.phone_number)
+    .map((s) => {
+      const client = s.clients![0] // Safe because filter ensures clients exists and has length > 0
       // Format phone number (remove any non-digit characters, ensure it's a valid format)
-      let phoneNumber = s.clients.phone_number.replace(/\D/g, '') // Remove non-digits
+      let phoneNumber = client.phone_number!.replace(/\D/g, '') // Remove non-digits
       // If it's 10 digits, add +1 for US numbers
       if (phoneNumber.length === 10) {
         phoneNumber = `+1${phoneNumber}`
@@ -743,7 +753,7 @@ export async function getTomorrowSessions(therapistId: string, date: string): Pr
       }
       
       return {
-        clientName: s.clients.name,
+        clientName: client.name,
         phoneNumber: phoneNumber,
         sessionTime: formatTimeForReminder(s.start_time),
         startTime: s.start_time

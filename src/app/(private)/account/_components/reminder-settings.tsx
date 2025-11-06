@@ -61,7 +61,7 @@ export default function ReminderSettings() {
       
       setSaveMessage('Settings saved successfully!')
       setTimeout(() => setSaveMessage(''), 3000)
-    } catch (error) {
+    } catch {
       setSaveMessage('Failed to save settings')
     } finally {
       setIsSaving(false)
@@ -190,15 +190,15 @@ export default function ReminderSettings() {
               For detailed step-by-step instructions, open the full setup guide on your iPhone.
             </p>
             <ol className="list-decimal list-inside space-y-2 text-sm">
-              <li>Open <strong>"Open Setup Guide (iPhone)"</strong> button above on your iPhone</li>
+              <li>Open <strong>&quot;Open Setup Guide (iPhone)&quot;</strong> button above on your iPhone</li>
               <li>Follow the 9-step guide to create the shortcut manually</li>
               <li>Create a daily automation at <strong>{formatTimeDisplay(reminderSettings.reminder_time)}</strong></li>
-              <li>Turn OFF "Ask Before Running" for full automation</li>
+              <li>Turn OFF &quot;Ask Before Running&quot; for full automation</li>
             </ol>
             <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
               <p className="text-sm text-blue-900 dark:text-blue-100">
-                <strong>Note:</strong> iOS doesn't allow importing shortcut files directly. 
-                You'll need to create the shortcut manually following the detailed guide.
+                <strong>Note:</strong> iOS doesn&apos;t allow importing shortcut files directly. 
+                You&apos;ll need to create the shortcut manually following the detailed guide.
               </p>
             </div>
           </div>
