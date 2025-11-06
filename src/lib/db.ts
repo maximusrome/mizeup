@@ -712,40 +712,52 @@ export async function getTomorrowSessions(therapistId: string, date: string): Pr
 }[]> {
   const supabase = await createSupabaseClient()
   
-  const { data, error } = await supabase
+  // First, get all sessions for the date with client IDs
+  const { data: sessionsData, error: sessionsError } = await supabase
     .from('sessions')
-    .select(`
-      start_time,
-      clients:client_id (
-        name,
-        phone_number
-      )
-    `)
+    .select('id, start_time, client_id')
     .eq('therapist_id', therapistId)
     .eq('date', date)
     .order('start_time')
   
-  if (error) {
-    throw new Error(`Failed to get sessions: ${error.message}`)
+  if (sessionsError) {
+    throw new Error(`Failed to get sessions: ${sessionsError.message}`)
   }
   
-  // Type for session with joined client data
-  type SessionWithClient = {
-    start_time: string
-    clients: {
-      name: string
-      phone_number: string | null
-    }[] | null
+  if (!sessionsData || sessionsData.length === 0) {
+    return []
   }
   
-  // Filter out sessions without phone numbers and format data
-  return ((data || []) as unknown as SessionWithClient[])
-    .filter((s) => s.clients && s.clients.length > 0 && s.clients[0]?.phone_number)
-    .map((s) => {
-      const client = s.clients![0] // Safe because filter ensures clients exists and has length > 0
-      // Format phone number (remove any non-digit characters, ensure it's a valid format)
-      let phoneNumber = client.phone_number!.replace(/\D/g, '') // Remove non-digits
-      // If it's 10 digits, add +1 for US numbers
+  // Get all client IDs
+  const clientIds = sessionsData.map(s => s.client_id).filter(Boolean)
+  
+  if (clientIds.length === 0) {
+    return []
+  }
+  
+  // Get clients with phone numbers
+  const { data: clientsData, error: clientsError } = await supabase
+    .from('clients')
+    .select('id, name, phone_number')
+    .in('id', clientIds)
+    .not('phone_number', 'is', null)
+  
+  if (clientsError) {
+    throw new Error(`Failed to get clients: ${clientsError.message}`)
+  }
+  
+  // Create a map of client ID to client data
+  const clientMap = new Map(
+    (clientsData || []).map(c => [c.id, c])
+  )
+  
+  // Combine sessions with client data
+  return sessionsData
+    .filter(s => s.client_id && clientMap.has(s.client_id))
+    .map(s => {
+      const client = clientMap.get(s.client_id)!
+      let phoneNumber = client.phone_number!.replace(/\D/g, '')
+      
       if (phoneNumber.length === 10) {
         phoneNumber = `+1${phoneNumber}`
       } else if (!phoneNumber.startsWith('+')) {
