@@ -41,7 +41,7 @@ export default function ClientsPage() {
       })
       setEditingName(nameMap)
       setEditingPhone(phoneMap)
-    } catch (err) {
+    } catch {
       setError('Failed to load clients')
       setTimeout(() => setError(''), 3000)
     } finally {

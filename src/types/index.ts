@@ -110,7 +110,7 @@ export interface CreateClientRequest {
 
 export interface UpdateClientRequest {
   name: string
-  phone_number?: string
+  phone_number?: string | null
 }
 
 export interface CreateSessionRequest {
