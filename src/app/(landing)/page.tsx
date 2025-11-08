@@ -10,22 +10,22 @@ const features = [
   {
     icon: <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
     title: "Easy Calendar Management",
-    description: "Add, edit, move sessions on mobile—daily workflow simplified."
+    description: "Manage sessions on mobile in seconds and sync to your EHR instantly."
   },
   {
     icon: <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-    title: "Smart Progress Notes",
-    description: "Voice dictation, conditional auto-responses, and niche code optimization for higher payouts."
+    title: "Optimized Progress Notes",
+    description: "Automate notes, discover hidden reimbursement codes, and sync with one click."
   },
   {
     icon: <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
-    title: "Seamless Sync",
-    description: "Copy and paste data to your favorite EHR with one click."
+    title: "Automated Reminders",
+    description: "Send automatic text reminders to every client, stopping no-shows and saving your time."
   }
 ];
 
 const steps = [
-  { step: "1", title: "Sign Up & Connect", description: "Sign up and connect your EHR account in under 5 minutes." },
+  { step: "1", title: "Sign Up & Connect", description: "Sign up and connect your EHR account in under one minute." },
   { step: "2", title: "Manage Daily", description: "Manage your calendar and notes with our intuitive interface." },
   { step: "3", title: "Sync & See Results", description: "Sync your data and see revenue gains on your personalized dashboard." }
 ];
@@ -82,7 +82,6 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Optimize Your Practice</h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Powerful features designed specifically for independent practice therapists</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {features.map((feature, index) => (
@@ -109,7 +108,6 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">Get started in minutes and see results immediately</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {steps.map((step, index) => (
@@ -137,20 +135,10 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">About Us</h2>
-            <p className="text-xl text-muted-foreground">Built by therapists, for therapists</p>
           </div>
           <Card className="glass-card glow-card p-6 md:p-12 text-center rounded-3xl">
             <CardContent className="pt-6 px-0">
-              <p className="text-xl mb-8 leading-relaxed">
-                MizeUp was founded with a simple mission: to help independent practice therapists
-                optimize their insurance reimbursements while reducing administrative burden.
-                We understand the challenges you face daily—from managing complex billing codes
-                to keeping up with ever-changing insurance requirements.
-              </p>
-              <p className="text-lg leading-relaxed">
-                Our platform is designed specifically for therapists, providing smart suggestions
-                and automated workflows that save you time and increase your revenue.
-              </p>
+              <p className="text-lg leading-relaxed">Hey, Im 20 years old and study computer sicence will a love for building startups that solve real problems. MizeUp was created becuase my aunt is a therapist and her least favorite part of her job is all the documentation and administrative work involved in her practice and she doesnt want to have to have to worry about how much insurance will reimburse her for her work. So I created MizeUp so solve these problems, finding hidden reimbursement codes to ensure my aunt gets paid for the work she does, and automate the boring tedious tasks of her job such as copying over her calendar from google calendar to her EHR, checking documentation for every code, and manually sending reminders to clients before every session.</p>
             </CardContent>
           </Card>
         </div>
@@ -161,7 +149,6 @@ function HomeContent() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Contact Us</h2>
-            <p className="text-lg text-muted-foreground">Let&apos;s connect! Have any questions or feedback?</p>
           </div>
           
           <Card className="glass-card glow-card p-6 md:p-12 text-center rounded-3xl">

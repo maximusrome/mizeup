@@ -7,6 +7,8 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
   Form,
   FormControl,
@@ -104,19 +106,27 @@ export function ContactForm() {
               <FormItem>
                 <FormLabel>Subject</FormLabel>
                 <FormControl>
-                  <select 
-                    {...field} 
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="Schedule Demo">Schedule Demo</option>
-                    <option value="Get Started">Get Started</option>
-                    <option value="Question">Question</option>
-                    <option value="Feedback">Feedback</option>
-                    <option value="Partnership">Partnership</option>
-                    <option value="Investment">Investment</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <div className="relative">
+                    <select
+                      {...field}
+                      className={cn(
+                        "h-9 w-full min-w-0 appearance-none rounded-md border border-input bg-transparent py-1 pl-3 pr-9 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/30 focus-visible:ring-[2px] aria-invalid:border-destructive aria-invalid:ring-destructive/20 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+                        field.value ? "text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      <option value="" disabled>
+                        Select a subject
+                      </option>
+                      <option value="Schedule Demo">Schedule Demo</option>
+                      <option value="Get Started">Get Started</option>
+                      <option value="Question">Question</option>
+                      <option value="Feedback">Feedback</option>
+                      <option value="Partnership">Partnership</option>
+                      <option value="Investment">Investment</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -130,8 +140,8 @@ export function ContactForm() {
               <FormItem>
                 <FormLabel>Message</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Ask us a question or share your feedback..."
+                  <Textarea
+                    placeholder="Let&apos;s connect! Have questions or want to see a demo?"
                     className="min-h-[120px]"
                     {...field} 
                   />
