@@ -15,13 +15,26 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { getClients, createClient, createSession, createRecurringSessions, updateSessionWithScope, deleteSession, deleteFutureSessions } from '@/lib/api'
+import { getClients, createSession, createRecurringSessions, updateSessionWithScope, deleteSession, deleteFutureSessions } from '@/lib/api'
 import type { Client, Session } from '@/types'
 
 // Constants
 const DROPDOWN_CLOSE_DELAY = 200 // ms
 const CLIENT_NAME_MAX_LENGTH = 100
 const TIME_STEP = 900 // seconds (15 minutes)
+type BackendRecurrenceFrequency = 'weekly' | 'biweekly' | 'every4weeks'
+type RecurrenceFrequency = 'one-time' | BackendRecurrenceFrequency
+
+const recurrenceOptions: { value: RecurrenceFrequency; label: string }[] = [
+  { value: 'one-time', label: 'One Time' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 Weeks' },
+  { value: 'every4weeks', label: 'Every 4 Weeks' },
+]
+
+const isRecurringFrequencyValue = (
+  value?: RecurrenceFrequency | null
+): value is BackendRecurrenceFrequency => !!value && value !== 'one-time'
 
 const sessionSchema = z.object({
   clientName: z.string().min(1, 'Client name is required').max(CLIENT_NAME_MAX_LENGTH, 'Client name is too long'),
@@ -66,14 +79,16 @@ export default function SessionModal({
   const [clients, setClients] = useState<Client[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showClientDropdown, setShowClientDropdown] = useState(false)
-  const [isRecurring, setIsRecurring] = useState(false)
+  const [activeClientIndex, setActiveClientIndex] = useState(0)
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
+  const [lastSelectedClientName, setLastSelectedClientName] = useState('')
   const [showUpdateScopeDialog, setShowUpdateScopeDialog] = useState(false)
   type SessionData = {
     client_id: string
     date: string
     start_time: string
     end_time: string
-    recurring_frequency?: 'weekly' | 'biweekly' | 'every4weeks'
+    recurring_frequency?: BackendRecurrenceFrequency
     recurring_end_date?: string
   }
   
@@ -86,7 +101,7 @@ export default function SessionModal({
       startTime: '13:00',
       endTime: '14:00',
       date: selectedDate,
-      recurringFrequency: undefined,
+      recurringFrequency: 'one-time',
       recurringEndDate: '',
     },
   })
@@ -98,30 +113,38 @@ export default function SessionModal({
     }
   }, [isOpen])
 
-  // Set form values when editing
+  // Set form values when modal opens / editing changes
   useEffect(() => {
+    if (!isOpen) return
+
     if (editingSession) {
       form.reset({
         clientName: editingSession.clients?.name || '',
         startTime: editingSession.start_time,
         endTime: editingSession.end_time,
         date: editingSession.date,
-        recurringFrequency: editingSession.recurring_frequency || undefined,
+        recurringFrequency: editingSession.recurring_frequency || 'one-time',
         recurringEndDate: editingSession.recurring_end_date || '',
       })
-      setIsRecurring(!!editingSession.recurring_group_id)
+      const editingClientName = editingSession.clients?.name || ''
+      if (editingClientName) {
+        setSelectedClientId(editingSession.client_id)
+        setLastSelectedClientName(editingClientName)
+      }
     } else {
       form.reset({
         clientName: '',
         startTime: '13:00',
         endTime: '14:00',
         date: selectedDate,
-        recurringFrequency: undefined,
+        recurringFrequency: 'one-time',
         recurringEndDate: '',
       })
-      setIsRecurring(false)
+      setSelectedClientId(null)
+      setLastSelectedClientName('')
+      setActiveClientIndex(0)
     }
-  }, [editingSession, selectedDate, form])
+  }, [isOpen, editingSession, selectedDate, form])
 
   const loadClients = async () => {
     try {
@@ -132,20 +155,53 @@ export default function SessionModal({
     }
   }
 
+  const clientNameRaw = form.watch('clientName') || ''
+  const clientNameValue = clientNameRaw.toLowerCase()
+  const frequencyValue =
+    (form.watch('recurringFrequency') as RecurrenceFrequency | undefined) || 'one-time'
+  const isRecurringSelected = frequencyValue !== 'one-time'
+
   // Filter clients based on input
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(form.watch('clientName')?.toLowerCase() || '')
+    client.name.toLowerCase().includes(clientNameValue)
   )
+
+  useEffect(() => {
+    const currentName = form.getValues('clientName') || ''
+    if (!currentName) {
+      setSelectedClientId(null)
+      setLastSelectedClientName('')
+      return
+    }
+
+    const match = clients.find(
+      client => client.name.toLowerCase() === currentName.trim().toLowerCase()
+    )
+
+    if (match) {
+      setSelectedClientId(match.id)
+      setLastSelectedClientName(match.name)
+    }
+  }, [clients, form])
+
+  useEffect(() => {
+    if (!showClientDropdown) return
+    setActiveClientIndex(0)
+  }, [clientNameValue, showClientDropdown, filteredClients.length])
 
 
   // Helper function to handle session conversion scenarios
   // Returns true if the update completed immediately, false if awaiting scope selection
-  const handleSessionConversion = async (sessionData: SessionData): Promise<boolean> => {
+  const handleSessionConversion = async (
+    sessionData: SessionData,
+    newIsRecurring: boolean
+  ): Promise<boolean> => {
     if (!editingSession) return true
     
-    const isConvertingToRecurring = !editingSession.recurring_group_id && isRecurring
-    const isConvertingFromRecurring = editingSession.recurring_group_id && !isRecurring
-    const isAlreadyRecurring = editingSession.recurring_group_id && isRecurring
+    const wasRecurring = !!editingSession.recurring_group_id
+    const isConvertingToRecurring = !wasRecurring && newIsRecurring
+    const isConvertingFromRecurring = wasRecurring && !newIsRecurring
+    const isAlreadyRecurring = wasRecurring && newIsRecurring
 
     if (isConvertingFromRecurring) {
       // Converting from recurring to non-recurring
@@ -216,10 +272,11 @@ export default function SessionModal({
 
   const onSubmit = async (data: SessionFormData) => {
     // Validate recurring fields only if recurring is enabled
+    const currentFrequency = form.getValues('recurringFrequency') as RecurrenceFrequency | undefined
+    const currentEndDate = form.getValues('recurringEndDate')
+    const isRecurring = isRecurringFrequencyValue(currentFrequency)
+
     if (isRecurring) {
-      const currentFrequency = form.getValues('recurringFrequency')
-      const currentEndDate = form.getValues('recurringEndDate')
-      
       if (!currentFrequency || !currentEndDate) {
         alert('Please select both frequency and end date for recurring sessions')
         return
@@ -235,13 +292,18 @@ export default function SessionModal({
     try {
       setIsLoading(true)
       
-      // Find existing client or create new one
-      let client = clients.find(c => c.name === data.clientName.trim())
+      // Require existing client selection
+      const client = selectedClientId
+        ? clients.find(c => c.id === selectedClientId)
+        : clients.find(
+            c => c.name.toLowerCase() === data.clientName.trim().toLowerCase()
+          )
+
       if (!client) {
-        client = await createClient({ 
-          name: data.clientName.trim()
-        })
-        setClients(prev => [...prev, client!])
+        form.setError('clientName', { type: 'manual', message: 'Select an existing client or add a new one' })
+        setShowClientDropdown(true)
+        setIsLoading(false)
+        return
       }
 
       const sessionData: SessionData & { is_recurring?: boolean } = {
@@ -249,15 +311,16 @@ export default function SessionModal({
         date: data.date,
         start_time: data.startTime,
         end_time: data.endTime,
-        ...(isRecurring && {
-          is_recurring: true,
-          recurring_frequency: form.getValues('recurringFrequency') as 'weekly' | 'biweekly' | 'every4weeks',
-          recurring_end_date: form.getValues('recurringEndDate'),
-        })
+      }
+
+      if (isRecurring && currentFrequency) {
+        sessionData.is_recurring = true
+        sessionData.recurring_frequency = currentFrequency
+        sessionData.recurring_end_date = currentEndDate
       }
 
       if (editingSession) {
-        const completed = await handleSessionConversion(sessionData)
+        const completed = await handleSessionConversion(sessionData, !!sessionData.is_recurring)
         if (!completed) {
           // Awaiting user scope selection, do not close modal here
           setIsLoading(false)
@@ -265,7 +328,7 @@ export default function SessionModal({
         }
       } else {
         // Creating new session(s)
-        if (isRecurring && sessionData.recurring_end_date) {
+        if (sessionData.is_recurring && sessionData.recurring_end_date) {
           // Creating recurring sessions - returns array
           const sessions = await createRecurringSessions(sessionData)
           if (sessions.length === 0) return
@@ -310,9 +373,13 @@ export default function SessionModal({
       }
       
       // Include recurring fields if the session is recurring
-      if (isRecurring) {
-        updateData.recurring_frequency = form.getValues('recurringFrequency') as 'weekly' | 'biweekly' | 'every4weeks'
+      const updateFrequency = form.getValues('recurringFrequency') as RecurrenceFrequency | undefined
+      if (isRecurringFrequencyValue(updateFrequency)) {
+        updateData.recurring_frequency = updateFrequency
         updateData.recurring_end_date = form.getValues('recurringEndDate')
+      } else {
+        updateData.recurring_frequency = undefined
+        updateData.recurring_end_date = undefined
       }
       
       const sessions = await updateSessionWithScope(editingSession.id, updateData)
@@ -374,29 +441,116 @@ export default function SessionModal({
                     <FormLabel>Client Name</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input 
-                          placeholder="Enter client name" 
-                          {...field} 
-                          onFocus={() => setShowClientDropdown(true)}
-                          onBlur={() => setTimeout(() => setShowClientDropdown(false), DROPDOWN_CLOSE_DELAY)}
-                        />
-                        {showClientDropdown && filteredClients.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                            {filteredClients.map(client => (
-                              <button
-                                key={client.id}
-                                type="button"
-                                className="w-full px-3 py-2 text-left hover:bg-gray-100 focus:bg-gray-100 focus:outline-none border-b border-gray-100 last:border-b-0"
-                                onClick={() => {
-                                  field.onChange(client.name)
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Input 
+                              placeholder="Search clients"
+                              {...field}
+                              onFocus={() => {
+                                setShowClientDropdown(true)
+                              }}
+                              onBlur={() => setTimeout(() => {
+                                setShowClientDropdown(false)
+                                const trimmedValue = (form.getValues('clientName') || '').trim()
+                                const match = clients.find(
+                                  client => client.name.toLowerCase() === trimmedValue.toLowerCase()
+                                )
+
+                                if (match) {
+                                  setSelectedClientId(match.id)
+                                  setLastSelectedClientName(match.name)
+                                  form.setValue('clientName', match.name, { shouldDirty: true, shouldValidate: true })
+                                } else if (lastSelectedClientName) {
+                                  form.setValue('clientName', lastSelectedClientName, { shouldValidate: true })
+                                  setSelectedClientId(
+                                    clients.find(c => c.name === lastSelectedClientName)?.id || null
+                                  )
+                                } else {
+                                  form.setValue('clientName', '', { shouldValidate: true })
+                                  setSelectedClientId(null)
+                                }
+                              }, DROPDOWN_CLOSE_DELAY)}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                field.onChange(value)
+                                setShowClientDropdown(true)
+                                form.clearErrors('clientName')
+
+                                if (!value.trim()) {
+                                  setSelectedClientId(null)
+                                } else {
+                                  const match = clients.find(
+                                    client => client.name.toLowerCase() === value.trim().toLowerCase()
+                                  )
+                                  if (match) {
+                                    setSelectedClientId(match.id)
+                                    setLastSelectedClientName(match.name)
+                                  } else {
+                                    setSelectedClientId(null)
+                                  }
+                                }
+                              }}
+                              onKeyDown={(event) => {
+                                if (!filteredClients.length) return
+
+                                if (event.key === 'ArrowDown') {
+                                  event.preventDefault()
+                                  setShowClientDropdown(true)
+                                  setActiveClientIndex(prev => (prev + 1) % filteredClients.length)
+                                } else if (event.key === 'ArrowUp') {
+                                  event.preventDefault()
+                                  setShowClientDropdown(true)
+                                  setActiveClientIndex(prev => (prev - 1 + filteredClients.length) % filteredClients.length)
+                                } else if (event.key === 'Enter') {
+                                  if (!showClientDropdown) return
+                                  event.preventDefault()
+                                  const client = filteredClients[activeClientIndex]
+                                  if (client) {
+                                    field.onChange(client.name)
+                                    setSelectedClientId(client.id)
+                                    setLastSelectedClientName(client.name)
+                                    form.clearErrors('clientName')
+                                    setShowClientDropdown(false)
+                                  }
+                                } else if (event.key === 'Escape') {
                                   setShowClientDropdown(false)
-                                }}
-                              >
-                                {client.name}
-                              </button>
-                            ))}
+                                }
+                              }}
+                              autoComplete="off"
+                            />
+                            {showClientDropdown && (
+                              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                {filteredClients.length > 0 ? (
+                                  filteredClients.map((client, index) => (
+                                    <button
+                                      key={client.id}
+                                      type="button"
+                                      className={`w-full px-3 py-2 text-left focus:outline-none border-b border-gray-100 last:border-b-0 ${
+                                        index === activeClientIndex
+                                          ? 'bg-primary/10 text-primary'
+                                          : 'hover:bg-gray-100 focus:bg-gray-100'
+                                      }`}
+                                      onMouseEnter={() => setActiveClientIndex(index)}
+                                      onClick={() => {
+                                        field.onChange(client.name)
+                                        setSelectedClientId(client.id)
+                                        setLastSelectedClientName(client.name)
+                                        form.clearErrors('clientName')
+                                        setShowClientDropdown(false)
+                                      }}
+                                    >
+                                      {client.name}
+                                    </button>
+                                  ))
+                                ) : (
+                                  <div className="px-3 py-2 text-sm text-muted-foreground">
+                                    No clients found
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -480,53 +634,46 @@ export default function SessionModal({
               
               {/* Recurring Options */}
               <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="isRecurring"
-                    checked={isRecurring}
-                    onChange={(e) => {
-                      setIsRecurring(e.target.checked)
-                      // Set default frequency when recurring is enabled
-                      if (e.target.checked && !form.getValues('recurringFrequency')) {
-                        form.setValue('recurringFrequency', 'weekly')
-                      }
-                      // Set default end date to 3 months from selected date
-                      if (e.target.checked && !form.getValues('recurringEndDate')) {
-                        const selectedDate = form.getValues('date')
-                        const threeMonthsLater = new Date(selectedDate)
-                        threeMonthsLater.setMonth(threeMonthsLater.getMonth() + 3)
-                        form.setValue('recurringEndDate', threeMonthsLater.toISOString().split('T')[0])
-                      }
-                    }}
-                    className="rounded border-gray-300"
-                  />
-                  <label htmlFor="isRecurring" className="text-sm font-medium">
-                    Make this a recurring session
-                  </label>
-                </div>
-                
-                {isRecurring && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label htmlFor="recurringFrequency" className="text-sm font-medium">Repeat every</label>
-                      <select 
-                        id="recurringFrequency"
-                        value={form.watch('recurringFrequency') || ''} 
-                        onChange={(e) => form.setValue('recurringFrequency', e.target.value)}
-                        className="w-full p-2 border rounded-md mt-1"
-                      >
-                        <option value="weekly">Week</option>
-                        <option value="biweekly">2 Weeks</option>
-                        <option value="every4weeks">4 Weeks</option>
-                      </select>
-                    </div>
-                    
-                    <div>
+                <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                  <div className="flex-1">
+                    <label htmlFor="recurringFrequency" className="text-sm font-medium">Frequency</label>
+                    <select
+                      id="recurringFrequency"
+                      value={frequencyValue}
+                      onChange={(e) => {
+                        const newFrequency = e.target.value as RecurrenceFrequency
+                        form.setValue('recurringFrequency', newFrequency, { shouldDirty: true })
+                        if (newFrequency === 'one-time') {
+                          form.setValue('recurringEndDate', '', { shouldDirty: true })
+                        } else if (!form.getValues('recurringEndDate')) {
+                          const selectedDateValue = form.getValues('date')
+                          if (selectedDateValue) {
+                            const defaultEndDate = new Date(selectedDateValue)
+                            defaultEndDate.setMonth(defaultEndDate.getMonth() + 3)
+                            form.setValue(
+                              'recurringEndDate',
+                              defaultEndDate.toISOString().split('T')[0],
+                              { shouldDirty: true }
+                            )
+                          }
+                        }
+                      }}
+                      className="w-full p-2 border rounded-md mt-1"
+                    >
+                      {recurrenceOptions.map(option => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {isRecurringSelected && (
+                    <div className="sm:w-48">
                       <label htmlFor="recurringEndDate" className="text-sm font-medium">Until</label>
-                      <Input 
+                      <Input
                         id="recurringEndDate"
-                        type="date" 
+                        type="date"
                         min={form.watch('date')}
                         value={form.watch('recurringEndDate')}
                         onChange={(e) => form.setValue('recurringEndDate', e.target.value)}
@@ -538,8 +685,8 @@ export default function SessionModal({
                         </p>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
               
               <div className="pt-2">
