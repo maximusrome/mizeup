@@ -14,37 +14,11 @@ export default function CalendarPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [syncTarget, setSyncTarget] = useState<'sessions' | 'notes' | null>(null)
   const [isSyncingNotes, setIsSyncingNotes] = useState(false)
-
-  // Swipe gesture handlers
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const handleTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-    
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > 50
-    const isRightSwipe = distance < -50
-
-    if (isLeftSwipe) {
-      setCurrentWeekOffset(prev => prev + 1)
-    }
-    if (isRightSwipe) {
-      setCurrentWeekOffset(prev => prev - 1)
-    }
-  }
 
   // Local date helpers to avoid UTC shifting issues
   const getLocalDateString = (date: Date) => {
@@ -182,23 +156,31 @@ export default function CalendarPage() {
       s => weekDates.includes(s.date) && !s.synced_to_therapynotes
     )
 
-    if (!unsyncedSessions.length) {
-      setSyncStatus('All sessions already synced')
-      setTimeout(() => setSyncStatus(null), 3000)
+    const totalSessions = unsyncedSessions.length
+
+    if (!totalSessions) {
+      setSyncTarget('sessions')
+      setSyncStatus('Already synced')
+      setTimeout(() => {
+        setSyncStatus(null)
+        setSyncTarget(null)
+      }, 3000)
       return
     }
 
     setIsSyncing(true)
+    setSyncTarget('sessions')
     const syncedIds: string[] = []
+    setSyncStatus(`Syncing ${syncedIds.length}/${totalSessions}`)
 
-    for (const [i, session] of unsyncedSessions.entries()) {
+    for (const session of unsyncedSessions) {
       try {
         const response = await fetch(`/api/therapynotes/sync-session/${session.id}`, {
           method: 'POST'
         })
         if (response.ok) {
           syncedIds.push(session.id)
-          setSyncStatus(`Syncing ${i + 1}/${unsyncedSessions.length}...`)
+          setSyncStatus(`Syncing ${syncedIds.length}/${totalSessions}`)
         }
       } catch {
         // Continue with next session
@@ -209,8 +191,11 @@ export default function CalendarPage() {
       prev.map(s => syncedIds.includes(s.id) ? { ...s, synced_to_therapynotes: true } : s)
     )
     setIsSyncing(false)
-    setSyncStatus(`✓ ${syncedIds.length} synced`)
-    setTimeout(() => setSyncStatus(null), 3000)
+    setSyncStatus(`Synced ${syncedIds.length}/${totalSessions}`)
+    setTimeout(() => {
+      setSyncStatus(null)
+      setSyncTarget(null)
+    }, 3000)
   }
 
   const handleSyncProgressNotes = async () => {
@@ -222,7 +207,9 @@ export default function CalendarPage() {
       s.synced_to_therapynotes // Session must be synced first
     )
 
-    if (!unsyncedNotes.length) {
+    const totalNotes = unsyncedNotes.length
+
+    if (!totalNotes) {
       const hasUnsyncedSessions = sessions.some(s => 
         weekDates.includes(s.date) && 
         s.has_progress_note && 
@@ -231,22 +218,30 @@ export default function CalendarPage() {
       )
       
       if (hasUnsyncedSessions) {
-        setSyncStatus('Sync sessions to TherapyNotes first')
-        setTimeout(() => setSyncStatus(null), 3000)
+        setSyncTarget('notes')
+        setSyncStatus('Sync sessions first')
+        setTimeout(() => {
+          setSyncStatus(null)
+          setSyncTarget(null)
+        }, 3000)
       } else {
-        setSyncStatus('All progress notes already synced')
-        setTimeout(() => setSyncStatus(null), 3000)
+        setSyncTarget('notes')
+        setSyncStatus('Already synced')
+        setTimeout(() => {
+          setSyncStatus(null)
+          setSyncTarget(null)
+        }, 3000)
       }
       return
     }
 
     setIsSyncingNotes(true)
+    setSyncTarget('notes')
     const syncedIds: string[] = []
+    setSyncStatus(`Syncing ${syncedIds.length}/${totalNotes}`)
 
-    for (const [i, session] of unsyncedNotes.entries()) {
+    for (const session of unsyncedNotes) {
       try {
-        setSyncStatus(`Syncing note ${i + 1}/${unsyncedNotes.length}...`)
-        
         // Fetch the progress note for this session
         const noteResponse = await fetch(`/api/notes/${session.id}`)
         const { data: note } = await noteResponse.json()
@@ -261,6 +256,7 @@ export default function CalendarPage() {
 
         if (result.success) {
           syncedIds.push(session.id)
+          setSyncStatus(`Syncing ${syncedIds.length}/${totalNotes}`)
         }
       } catch {
         // Continue with next session
@@ -273,8 +269,65 @@ export default function CalendarPage() {
     )
     
     setIsSyncingNotes(false)
-    setSyncStatus(`✓ ${syncedIds.length} note${syncedIds.length !== 1 ? 's' : ''} synced`)
-    setTimeout(() => setSyncStatus(null), 3000)
+    setSyncStatus(`Synced ${syncedIds.length}/${totalNotes}`)
+    setTimeout(() => {
+      setSyncStatus(null)
+      setSyncTarget(null)
+    }, 3000)
+  }
+
+  const renderSyncLabel = (target: 'sessions' | 'notes', defaultLabel: string) => {
+    if (syncTarget !== target || !syncStatus) {
+      return defaultLabel
+    }
+
+    if (syncStatus.startsWith('Syncing')) {
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          <svg
+            className="h-3.5 w-3.5 animate-spin text-white/90"
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+            />
+          </svg>
+          {syncStatus}
+        </span>
+      )
+    }
+
+    if (syncStatus.startsWith('Synced')) {
+      return (
+        <span className="inline-flex items-center gap-1.5">
+          <svg
+            className="h-3.5 w-3.5 text-white"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {syncStatus}
+        </span>
+      )
+    }
+
+    return syncStatus
   }
 
   return (
@@ -285,9 +338,9 @@ export default function CalendarPage() {
               <h1 className="text-3xl font-bold text-foreground mb-2">Calendar</h1>
             </div>
 
-            {/* Weekly Calendar with Swipe Navigation */}
+            {/* Weekly Calendar */}
             {/* Week Navigation */}
-            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-4">
               <Button
                 variant="ghost"
                 size="sm"
@@ -330,30 +383,26 @@ export default function CalendarPage() {
                   Today
                 </Button>
 
-                {syncStatus && (
-                  <span className="text-xs text-muted-foreground">
-                    {syncStatus}
-                  </span>
-                )}
-
                 <Button
-                  variant="default"
+                  variant="secondary"
                   size="sm"
                   onClick={handleSyncWeek}
-                  disabled={isSyncing}
-                  className="h-8 px-3 text-xs"
+                  disabled={isSyncing || isSyncingNotes}
+                  className="h-8 px-3 text-xs text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110"
+                  style={{ backgroundImage: 'none' }}
                 >
-                  {isSyncing ? 'Syncing...' : 'Sync Sessions'}
+                  {renderSyncLabel('sessions', 'Sync Sessions')}
                 </Button>
 
                 <Button
-                  variant="default"
+                  variant="secondary"
                   size="sm"
                   onClick={handleSyncProgressNotes}
-                  disabled={isSyncingNotes}
-                  className="h-8 px-3 text-xs"
+                  disabled={isSyncingNotes || isSyncing}
+                  className="h-8 px-3 text-xs text-white bg-[var(--secondary)] hover:bg-[var(--secondary)] hover:brightness-110"
+                  style={{ backgroundImage: 'none' }}
                 >
-                  {isSyncingNotes ? 'Syncing...' : 'Sync Notes'}
+                  {renderSyncLabel('notes', 'Sync Notes')}
                 </Button>
               </div>
               
@@ -371,9 +420,6 @@ export default function CalendarPage() {
 
             <div 
               className="space-y-3 pb-6"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
             >
               {/* Week Days */}
               {weekDates.map((dayData) => {
@@ -418,7 +464,7 @@ export default function CalendarPage() {
                     {isLoading ? (
                       <div className="text-sm text-muted-foreground">Loading...</div>
                     ) : daySessions.length > 0 ? (
-                      <div className="mt-2 space-y-2">
+                      <div className="mt-1.5 border-t border-border divide-y divide-border">
                         {daySessions.map((session) => (
                           <SessionCard
                             key={session.id}
@@ -430,7 +476,9 @@ export default function CalendarPage() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-sm text-muted-foreground">No sessions</div>
+                      <span className="sr-only" aria-live="polite">
+                        No sessions scheduled
+                      </span>
                     )}
                   </Card>
                 )

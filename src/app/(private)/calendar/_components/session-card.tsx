@@ -22,10 +22,10 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
   const handleDeleteClick = () => {
     if (session.recurring_group_id) {
       setShowDeleteDialog(true)
-      } else {
-        // Regular session deletion - no confirmation needed
-        handleDelete('single')
-      }
+    } else {
+      // Regular session deletion - no confirmation needed
+      handleDelete('single')
+    }
   }
 
   const handleDelete = async (scope: 'single' | 'all_future') => {
@@ -59,20 +59,34 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
       const [hours, minutes] = timeString.split(':').map(Number)
       const date = new Date()
       date.setHours(hours, minutes, 0, 0)
-      return date.toLocaleTimeString('en-US', {
+      const formatted = new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
         minute: '2-digit',
-        hour12: true
-      })
+        hour12: true,
+      }).format(date)
+
+      return formatted.replace(':00', '')
     } catch {
       return timeString
     }
   }
 
+  const noteButtonClassName = `h-8 w-8 p-0 transition-colors ${
+    session.has_progress_note
+      ? 'text-[var(--primary)] hover:text-[var(--primary)] hover:bg-[var(--primary)]/10'
+      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+  }`
+
+  const noteButtonTitle = session.has_progress_note
+    ? session.progress_note_synced
+      ? 'Progress note synced'
+      : 'Progress note available'
+    : 'Progress note'
+
   return (
-    <div className="flex justify-between items-center p-3 bg-muted/50 rounded-md border hover:bg-muted/70">
+    <div className="flex justify-between items-center py-2.5">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-sm text-foreground">
             {formatTimeForDisplay(session.start_time)}
           </span>
@@ -86,27 +100,25 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
             </svg>
           )}
           {session.synced_to_therapynotes && (
-            <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-100 text-green-800">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <span
+              className="text-[var(--primary)]"
+              style={{ filter: 'drop-shadow(0 0 4px rgba(0, 191, 255, 0.35))' }}
+              title="Session synced"
+            >
+              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              Session Synced
             </span>
           )}
-          {session.has_progress_note && !session.progress_note_synced && (
-            <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-100 text-blue-800">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          {session.has_progress_note && session.progress_note_synced && (
+            <span
+              className="text-[var(--secondary)]"
+              style={{ filter: 'drop-shadow(0 0 4px rgba(199, 185, 255, 0.35))' }}
+              title="Progress note synced"
+            >
+              <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
-              Note
-            </span>
-          )}
-          {session.progress_note_synced && (
-            <span className="flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-100 text-green-800">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Note Synced
             </span>
           )}
         </div>
@@ -116,8 +128,8 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
           variant="ghost"
           size="sm"
           onClick={() => router.push(`/notes/${session.id}`)}
-          className="text-muted-foreground hover:text-foreground hover:bg-muted/50 h-8 w-8 p-0"
-          title="Progress Note"
+          className={noteButtonClassName}
+          title={noteButtonTitle}
         >
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
