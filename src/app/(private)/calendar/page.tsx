@@ -429,19 +429,19 @@ export default function CalendarPage() {
                 return (
                   <Card 
                     key={dayData.date} 
-                    className="px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="mb-2">
+                    className={`px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors border ${
+                      dayData.isToday ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]/30' : 'border-border'
+                    }`}
+                    >
+                     <div className="mb-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-lg">
-                              {dayData.dayName} <span className="text-sm text-muted-foreground font-normal">{formattedDate}</span>
-                            </h3>
-                            {dayData.isToday && (
-                              <span className="px-2 py-1 text-xs font-medium bg-primary text-primary-foreground rounded-full">
-                                Today
+                              {dayData.dayName}{' '}
+                              <span className="text-sm font-normal text-muted-foreground">
+                                {formattedDate}
                               </span>
-                            )}
+                            </h3>
                           </div>
                         <Button
                           variant="ghost"
@@ -464,7 +464,7 @@ export default function CalendarPage() {
                     {isLoading ? (
                       <div className="text-sm text-muted-foreground">Loading...</div>
                     ) : daySessions.length > 0 ? (
-                      <div className="mt-1.5 border-t border-border divide-y divide-border">
+                      <div className="border-t border-border divide-y divide-border">
                         {daySessions.map((session) => (
                           <SessionCard
                             key={session.id}

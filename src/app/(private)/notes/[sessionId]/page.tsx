@@ -297,6 +297,18 @@ export default function SessionProgressNotePage() {
       })
   }, [sessionId, pullFromTherapyNotes])
 
+  useEffect(() => {
+    if (!session) return
+    try {
+      const sessionStart = new Date(`${session.date}T${session.start_time}`)
+      if (sessionStart.getTime() > Date.now()) {
+        router.push('/calendar')
+      }
+    } catch {
+      // no-op
+    }
+  }, [session, router])
+
   
 
   const toggle = (id: string) => {
@@ -430,12 +442,12 @@ export default function SessionProgressNotePage() {
       }
 
       const currentDateTime = new Date(`${session.date}T${session.start_time}`)
+      const now = new Date()
       const nextUnwritten = data
         .filter(s => s.id !== session.id)
         .filter(s => new Date(`${s.date}T${s.start_time}`).getTime() > currentDateTime.getTime())
-        .filter(s => !s.has_progress_note)
         .sort((a, b) => new Date(`${a.date}T${a.start_time}`).getTime() - new Date(`${b.date}T${b.start_time}`).getTime())
-        [0]
+        .find(s => new Date(`${s.date}T${s.start_time}`).getTime() <= now.getTime())
 
       if (nextUnwritten) {
         router.push(`/notes/${nextUnwritten.id}`)
@@ -449,7 +461,7 @@ export default function SessionProgressNotePage() {
 
   const formatSessionDateTime = () => {
     if (!session) return ''
-    const date = new Date(session.date)
+    const date = new Date(`${session.date}T00:00:00`)
     return `${date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${formatTime(session.start_time)} - ${formatTime(session.end_time)}`
   }
 
@@ -462,10 +474,21 @@ export default function SessionProgressNotePage() {
 
   return (
     <div className="container mx-auto px-4 max-w-6xl py-8">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/calendar')} className="mb-4">← Back</Button>
-          
-          <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => router.push('/calendar')}
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              aria-label="Back to calendar"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Button>
             <h1 className="text-3xl font-bold">Progress Note</h1>
+          </div>
             {tnPrefilled && (
               <span className="text-xs text-muted-foreground">Prefilled from TherapyNotes</span>
             )}
