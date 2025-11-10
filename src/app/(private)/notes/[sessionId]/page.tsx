@@ -94,6 +94,14 @@ const NORMAL_VALUES: Record<string, string> = {
   mood: 'Euthymic', perception: 'Unremarkable', affect: 'Congruent', functionalStatus: 'Intact'
 }
 
+const NOT_ASSESSED_VALUES: Record<string, string> = MENTAL_STATUS_FIELDS.reduce(
+  (acc, field) => {
+    acc[field.key] = 'Not Assessed'
+    return acc
+  },
+  {} as Record<string, string>
+)
+
 const QUESTIONS = [
   { id: 'q1', text: 'Did you need to manage maladaptive communication (related to, e.g., high anxiety, high reactivity, repeated questions, or disagreement) among participants that complicates delivery of care?', answer: false, code: '90785', note: 'Managed maladaptive communication among participants, such as high anxiety, reactivity, repeated questions, or disagreement. This complicated care delivery by impeding therapeutic engagement. Interventions included de-escalation techniques, clarification, and redirection to facilitate session progress.' },
   { id: 'q2', text: 'Did the caregiver\'s emotions/behavior interfere with implementation of the treatment plan?', answer: false, code: '90785', note: 'Caregiver emotions and behaviors, such as agitation or disagreement with the plan, interfered with treatment implementation by disrupting focus. Interventions included addressing concerns, mediating dynamics, and refocusing on goals to enable effective care.' },
@@ -112,23 +120,6 @@ const formatTime = (time: string) => {
 }
 
 // Components
-const Section = ({ title, open, onToggle, children, reimbursement }: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode; reimbursement?: string }) => (
-  <div className="border rounded-lg">
-    <button onClick={onToggle} className="w-full px-4 py-3 flex items-center justify-between bg-primary text-primary-foreground hover:bg-primary/90 transition-colors rounded-t-lg">
-      <span className="font-semibold">{title}</span>
-      <div className="flex items-center gap-3">
-        {reimbursement && (
-          <span className="bg-background text-success border border-success px-3 py-1 rounded-full text-sm font-bold">
-            {reimbursement}
-          </span>
-        )}
-        <span className={`transition-transform ${open ? 'rotate-180' : ''}`}>▼</span>
-      </div>
-    </button>
-    {open && <div className="p-4 space-y-2">{children}</div>}
-  </div>
-)
-
 const RadioGroup = ({ name, options, value, onChange }: { name: string; options: string[]; value: string; onChange: (val: string) => void }) => (
   <div className="space-y-2">
     {options.map(opt => (
@@ -172,7 +163,6 @@ const SuggestionField = ({ options, value, onChange, placeholder, label }: { opt
 export default function SessionProgressNotePage() {
   const { sessionId } = useParams()
   const router = useRouter()
-  const [open3, setOpen3] = useState(true)
   const [questions, setQuestions] = useState(QUESTIONS)
   const [saving, setSaving] = useState(false)
   const [session, setSession] = useState<Session | null>(null)
@@ -181,7 +171,7 @@ export default function SessionProgressNotePage() {
   // Progress Note State
   const [diagnosisCode, setDiagnosisCode] = useState('')
   const [diagnosisDescription, setDiagnosisDescription] = useState('')
-  const [mentalStatus, setMentalStatus] = useState(NORMAL_VALUES)
+  const [mentalStatus, setMentalStatus] = useState<Record<string, string>>({ ...NORMAL_VALUES })
   const [mentalStatusAllNormal, setMentalStatusAllNormal] = useState(true)
   const [patientDeniesRisk, setPatientDeniesRisk] = useState(true)
   const [riskAssessment, setRiskAssessment] = useState({ areaOfRisk: '', levelOfRisk: '', intentToAct: '', planToAct: '', meansToAct: '', riskFactors: '', protectiveFactors: '', additionalDetails: '' })
@@ -267,7 +257,7 @@ export default function SessionProgressNotePage() {
         
         // Load mental status
         if (content.mentalStatus) {
-          setMentalStatus(content.mentalStatus)
+           setMentalStatus({ ...content.mentalStatus })
           // Compute All Normal state from actual field values
           const allNormal = MENTAL_STATUS_FIELDS.every(
             field => content.mentalStatus![field.key] === NORMAL_VALUES[field.key]
@@ -350,17 +340,23 @@ export default function SessionProgressNotePage() {
 
   const toggleAllNormal = () => {
     if (mentalStatusAllNormal) {
-      setMentalStatus(Object.keys(NORMAL_VALUES).reduce((acc, key) => ({ ...acc, [key]: '' }), {}))
+       setMentalStatus({ ...NOT_ASSESSED_VALUES })
       setMentalStatusAllNormal(false)
     } else {
-      setMentalStatus(NORMAL_VALUES)
+       setMentalStatus({ ...NORMAL_VALUES })
       setMentalStatusAllNormal(true)
     }
   }
 
   const updateMentalStatus = (key: string, value: string) => {
-    setMentalStatus(prev => ({ ...prev, [key]: value }))
-    setMentalStatusAllNormal(false)
+     setMentalStatus(prev => {
+       const next = { ...prev, [key]: value }
+       const allNormal = MENTAL_STATUS_FIELDS.every(
+         field => next[field.key] === NORMAL_VALUES[field.key]
+       )
+       setMentalStatusAllNormal(allNormal)
+       return next
+     })
   }
 
   const save = async () => {
@@ -475,9 +471,7 @@ export default function SessionProgressNotePage() {
             )}
           </div>
           
-          <div className="space-y-4 mb-6">
-            <Section title="Progress Note Builder" open={open3} onToggle={() => setOpen3(!open3)}>
-              <div className="space-y-6">
+          <div className="space-y-6 mb-6">
                 {/* Session Info */}
                 <div className="bg-muted/50 p-4 rounded-lg border">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2">
@@ -536,20 +530,26 @@ export default function SessionProgressNotePage() {
 
                 {/* Current Mental Status */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Current Mental Status</Label>
-                    <Button variant={mentalStatusAllNormal ? "default" : "outline"} size="sm" onClick={toggleAllNormal} className={mentalStatusAllNormal ? "bg-green-600 hover:bg-green-700" : ""}>
-                      {mentalStatusAllNormal && <span className="mr-1">✓</span>}All Normal
-                    </Button>
+                   <div className="flex items-center justify-between">
+                     <Label className="text-base font-semibold">Current Mental Status</Label>
+                     <Button variant="outline" size="sm" onClick={toggleAllNormal}>
+                       {mentalStatusAllNormal ? 'Set All Not Assessed' : 'Set All Normal'}
+                     </Button>
                   </div>
                   <div className="bg-muted/30 p-4 md:p-5 rounded-lg border">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
                       {MENTAL_STATUS_FIELDS.map(field => (
-                        <div key={field.key} className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3">
-                          <Label className="text-sm font-medium sm:min-w-[160px] lg:w-[180px] pt-2 leading-tight">{field.label}:</Label>
-                          <select value={mentalStatus[field.key]} onChange={(e) => updateMentalStatus(field.key, e.target.value)} className="w-full lg:w-[280px] h-10 px-3 rounded-md border border-input bg-background text-sm">
-                            {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                          </select>
+                        <div key={field.key} className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-4">
+                          <Label className="text-sm font-medium leading-tight lg:w-[190px] lg:flex-shrink-0">{field.label}:</Label>
+                          <div className="w-full">
+                            <select
+                              value={mentalStatus[field.key]}
+                              onChange={(e) => updateMentalStatus(field.key, e.target.value)}
+                              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
+                            >
+                              {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                            </select>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -728,13 +728,14 @@ export default function SessionProgressNotePage() {
                         ))}
                       </div>
                       {recommendation !== 'terminate' && (
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                          <Label className="text-sm sm:whitespace-nowrap">Prescribed Frequency of Treatment *</Label>
-                          <select 
-                            value={prescribedFrequency} 
-                            onChange={(e) => setPrescribedFrequency(e.target.value)}
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          >
+                        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                          <Label className="text-sm md:whitespace-nowrap">Prescribed Frequency of Treatment *</Label>
+                          <div className="w-full md:flex-1 md:min-w-0">
+                            <select 
+                              value={prescribedFrequency} 
+                              onChange={(e) => setPrescribedFrequency(e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
                             <option value="As Needed">As Needed</option>
                             <option value="Twice a Week">Twice a Week</option>
                             <option value="Weekly">Weekly</option>
@@ -745,13 +746,12 @@ export default function SessionProgressNotePage() {
                             <option value="Every 3 Months">Every 3 Months</option>
                             <option value="Every 4 Months">Every 4 Months</option>
                           </select>
+                          </div>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-              </div>
-            </Section>
           </div>
           
           {validationError && (
