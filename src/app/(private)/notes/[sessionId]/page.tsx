@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import type { Session, ProgressNoteContent } from '@/types'
+import { VoiceInputButton } from './_components/voice-input-button'
+import { PlanHistoryButton } from './_components/plan-history-button'
 
 // Constants
 const INTERVENTION_OPTIONS = [
@@ -189,6 +191,36 @@ export default function SessionProgressNotePage() {
   const [additionalDiagnoses, setAdditionalDiagnoses] = useState<{ code: string; description: string }[]>([])
   const didAutoPullRef = useRef(false)
 
+  const finalizedTextRef = useRef('')
+  const finalizedPlanRef = useRef('')
+
+  const serviceCodes = useMemo(() => {
+    const codes = ['90837']
+    if (questions.some(q => q.code === '90785' && q.answer)) codes.push('+90785')
+    if (questions.some(q => q.code === '99050' && q.answer)) codes.push('+99050')
+    return codes.join(' ')
+  }, [questions])
+
+  const handleSubjectiveTranscript = useCallback((transcript: string, isFinal: boolean) => {
+    if (isFinal) {
+      const newText = finalizedTextRef.current ? `${finalizedTextRef.current} ${transcript}` : transcript
+      finalizedTextRef.current = newText
+      setSubjectiveReport(newText)
+    } else {
+      setSubjectiveReport(finalizedTextRef.current ? `${finalizedTextRef.current} ${transcript}` : transcript)
+    }
+  }, [])
+
+  const handlePlanTranscript = useCallback((transcript: string, isFinal: boolean) => {
+    if (isFinal) {
+      const newText = finalizedPlanRef.current ? `${finalizedPlanRef.current} ${transcript}` : transcript
+      finalizedPlanRef.current = newText
+      setPlan(newText)
+    } else {
+      setPlan(finalizedPlanRef.current ? `${finalizedPlanRef.current} ${transcript}` : transcript)
+    }
+  }, [])
+
   const pullFromTherapyNotes = useCallback(async () => {
     try {
       const res = await fetch(`/api/therapynotes/get-note/${sessionId}`)
@@ -282,12 +314,18 @@ export default function SessionProgressNotePage() {
         
         // Load clinical content
         if (content.medications) setMedications(content.medications)
-        if (content.subjectiveReport) setSubjectiveReport(content.subjectiveReport)
+        if (content.subjectiveReport) {
+          finalizedTextRef.current = content.subjectiveReport
+          setSubjectiveReport(content.subjectiveReport)
+        }
         if (content.objectiveContent) setObjectiveContent(content.objectiveContent)
         if (content.interventions) setInterventions(content.interventions)
         if (content.treatmentProgress) setTreatmentProgress(content.treatmentProgress)
         if (content.assessment) setAssessment(content.assessment)
-        if (content.plan) setPlan(content.plan)
+        if (content.plan) {
+          finalizedPlanRef.current = content.plan
+          setPlan(content.plan)
+        }
         
         // Load recommendation
         if (content.recommendation) {
@@ -501,7 +539,7 @@ export default function SessionProgressNotePage() {
                     <div className="flex gap-3"><span className="text-sm font-medium min-w-[100px]">Client:</span><span className="text-sm">{session?.clients?.name || 'Loading...'}</span></div>
                     <div className="flex gap-3"><span className="text-sm font-medium min-w-[100px]">Date and Time:</span><span className="text-sm">{formatSessionDateTime()}</span></div>
                     <div className="flex gap-3"><span className="text-sm font-medium min-w-[100px]">Duration:</span><span className="text-sm">{calculateDuration()}</span></div>
-                    <div className="flex gap-3"><span className="text-sm font-medium min-w-[100px]">Service Code:</span><span className="text-sm">90837</span></div>
+                    <div className="flex gap-3"><span className="text-sm font-medium min-w-[100px]">Service Code:</span><span className="text-sm">{serviceCodes}</span></div>
                     <div className="flex gap-3"><span className="text-sm font-medium min-w-[100px]">Location:</span><span className="text-sm">Main Office</span></div>
                   </div>
                 </div>
@@ -628,8 +666,19 @@ export default function SessionProgressNotePage() {
 
                 {/* Subjective Report */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Subjective Report and Symptom Description</Label>
-                  <Textarea value={subjectiveReport} onChange={(e) => setSubjectiveReport(e.target.value)} placeholder="Subjective information discussed in session" rows={4} className="resize-none" />
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Label className="text-base font-semibold">
+                      Subjective Report and Symptom Description
+                    </Label>
+                    <VoiceInputButton onTranscript={handleSubjectiveTranscript} />
+                  </div>
+                  <Textarea
+                    value={subjectiveReport}
+                    onChange={(e) => setSubjectiveReport(e.target.value)}
+                    placeholder="Subjective information discussed in session"
+                    rows={4}
+                    className="resize-none"
+                  />
                 </div>
 
                 {/* Objective Content */}
@@ -733,7 +782,19 @@ export default function SessionProgressNotePage() {
 
                 {/* Plan */}
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Plan *</Label>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <Label className="text-base font-semibold">Plan *</Label>
+                    <div className="flex gap-2">
+                      <VoiceInputButton onTranscript={handlePlanTranscript} />
+                      {session?.client_id && (
+                        <PlanHistoryButton
+                          clientId={session.client_id}
+                          currentSessionId={sessionId as string}
+                          onSelect={setPlan}
+                        />
+                      )}
+                    </div>
+                  </div>
                   <Textarea value={plan} onChange={(e) => setPlan(e.target.value)} placeholder="Next steps in the treatment process" rows={4} className="resize-none" />
                 </div>
 
