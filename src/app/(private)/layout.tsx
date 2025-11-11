@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Sidebar from './_components/sidebar'
+import PostHogIdentify from './_components/posthog-identify'
 
 export const metadata: Metadata = {
   robots: {
@@ -19,6 +20,7 @@ export default function PrivateLayout({
 }) {
   return (
     <div className="min-h-screen bg-background">
+      <PostHogIdentify />
       <Sidebar />
       <div className="pt-16 lg:pt-0 lg:pl-64">
         {children}
