@@ -334,8 +334,30 @@ export default function CalendarPage() {
     <>
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="py-6">
-            <div className="mb-6">
-              <h1 className="text-3xl font-bold text-foreground mb-2">Calendar</h1>
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSyncWeek}
+                  disabled={isSyncing || isSyncingNotes}
+                  className="h-8 px-2 sm:px-3 text-xs text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110 whitespace-nowrap"
+                  style={{ backgroundImage: 'none' }}
+                >
+                  {renderSyncLabel('sessions', 'Sync Sessions')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleSyncProgressNotes}
+                  disabled={isSyncingNotes || isSyncing}
+                  className="h-8 px-2 sm:px-3 text-xs text-white bg-[var(--secondary)] hover:bg-[var(--secondary)] hover:brightness-110 whitespace-nowrap"
+                  style={{ backgroundImage: 'none' }}
+                >
+                  {renderSyncLabel('notes', 'Sync Notes')}
+                </Button>
+              </div>
             </div>
 
             {/* Weekly Calendar */}
@@ -381,28 +403,6 @@ export default function CalendarPage() {
                   className="h-8 px-3 text-xs"
                 >
                   Today
-                </Button>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleSyncWeek}
-                  disabled={isSyncing || isSyncingNotes}
-                  className="h-8 px-3 text-xs text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110"
-                  style={{ backgroundImage: 'none' }}
-                >
-                  {renderSyncLabel('sessions', 'Sync Sessions')}
-                </Button>
-
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleSyncProgressNotes}
-                  disabled={isSyncingNotes || isSyncing}
-                  className="h-8 px-3 text-xs text-white bg-[var(--secondary)] hover:bg-[var(--secondary)] hover:brightness-110"
-                  style={{ backgroundImage: 'none' }}
-                >
-                  {renderSyncLabel('notes', 'Sync Notes')}
                 </Button>
               </div>
               
