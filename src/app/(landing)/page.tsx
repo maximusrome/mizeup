@@ -10,7 +10,7 @@ const features = [
   {
     icon: <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
     title: "Easy Calendar Management",
-    description: "Manage sessions on mobile in seconds and sync to your EHR instantly."
+    description: "Manage sessions on mobile and sync to your EHR instantly."
   },
   {
     icon: <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
@@ -20,12 +20,12 @@ const features = [
   {
     icon: <svg className="w-8 h-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>,
     title: "Automated Reminders",
-    description: "Send automatic text reminders to every client, stopping no-shows and saving your time."
+    description: "Send automatic text reminders to every client, stopping no-shows and saving time."
   }
 ];
 
 const steps = [
-  { step: "1", title: "Sign Up & Connect", description: "Sign up and connect your EHR account in under one minute." },
+  { step: "1", title: "Sign Up & Connect", description: "Sign up and connect your EHR account in under a minute." },
   { step: "2", title: "Manage Daily", description: "Manage your calendar and notes with our intuitive interface." },
   { step: "3", title: "Sync & See Results", description: "Sync your data and see revenue gains on your personalized dashboard." }
 ];
@@ -136,9 +136,16 @@ function HomeContent() {
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">About Us</h2>
           </div>
-          <Card className="glass-card glow-card p-6 md:p-12 text-center rounded-3xl">
-            <CardContent className="pt-6 px-0">
-              <p className="text-lg leading-relaxed">Hey, Im 20 years old and study computer sicence will a love for building startups that solve real problems. MizeUp was created becuase my aunt is a therapist and her least favorite part of her job is all the documentation and administrative work involved in her practice and she doesnt want to have to have to worry about how much insurance will reimburse her for her work. So I created MizeUp so solve these problems, finding hidden reimbursement codes to ensure my aunt gets paid for the work she does, and automate the boring tedious tasks of her job such as copying over her calendar from google calendar to her EHR, checking documentation for every code, and manually sending reminders to clients before every session.</p>
+          <Card className="glass-card glow-card p-6 md:p-12 rounded-3xl">
+            <CardContent className="pt-6">
+              <div className="max-w-3xl mx-auto space-y-6">
+                <p className="text-lg leading-relaxed text-foreground">
+                  Hey, I&apos;m Max. I&apos;m 20 years old and I love building startups that solve real problems and help real people. MizeUp was created because my aunt was overwhelmed by the documentation and administrative work required in her therapy practice, making it difficult for her to get paid for all of her work.
+                </p>
+                <p className="text-lg leading-relaxed text-foreground">
+                  I created MizeUp to solve these problems by finding hidden reimbursement codes and by automating tedious tasks like copying calendar entries, documenting billing codes, and sending session reminders to clients.
+                </p>
+              </div>
             </CardContent>
           </Card>
         </div>
