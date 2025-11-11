@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +13,8 @@ export default function UpdatePasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [isSessionReady, setIsSessionReady] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -98,25 +101,47 @@ export default function UpdatePasswordPage() {
             <form onSubmit={(e) => { e.preventDefault(); handleSubmit(new FormData(e.currentTarget)); }} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="password">New Password</Label>
-                <Input 
-                  id="password"
-                  name="password" 
-                  type="password" 
-                  placeholder="Enter new password" 
-                  minLength={8}
-                  required 
-                />
+                <div className="relative">
+                  <Input 
+                    id="password"
+                    name="password" 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Enter new password" 
+                    className="pr-10"
+                    minLength={8}
+                    required 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <Input 
-                  id="confirmPassword"
-                  name="confirmPassword" 
-                  type="password" 
-                  placeholder="Confirm new password" 
-                  minLength={8}
-                  required 
-                />
+                <div className="relative">
+                  <Input 
+                    id="confirmPassword"
+                    name="confirmPassword" 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    placeholder="Confirm new password" 
+                    className="pr-10"
+                    minLength={8}
+                    required 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
               {error && (
                 <div className="p-3 bg-red-50 border border-red-200 rounded-md">

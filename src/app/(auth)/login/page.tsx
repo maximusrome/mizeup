@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -15,6 +16,8 @@ function AuthPageContent() {
   const [isSignupLoading, setIsSignupLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('login')
+  const [showLoginPassword, setShowLoginPassword] = useState(false)
+  const [showSignupPassword, setShowSignupPassword] = useState(false)
   const searchParams = useSearchParams()
 
   useEffect(() => {
@@ -97,13 +100,24 @@ function AuthPageContent() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Password</Label>
-                  <Input 
-                    id="login-password"
-                    name="password" 
-                    type="password" 
-                    placeholder="Enter your password" 
-                    required 
-                  />
+                  <div className="relative">
+                    <Input 
+                      id="login-password"
+                      name="password" 
+                      type={showLoginPassword ? "text" : "password"} 
+                      placeholder="Enter your password" 
+                      className="pr-10"
+                      required 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowLoginPassword(!showLoginPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <div className="text-right">
                     <a 
                       href="/reset-password" 
@@ -138,14 +152,25 @@ function AuthPageContent() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
-                  <Input 
-                    id="signup-password"
-                    name="password" 
-                    type="password" 
-                    placeholder="Create a password" 
-                    minLength={8}
-                    required 
-                  />
+                  <div className="relative">
+                    <Input 
+                      id="signup-password"
+                      name="password" 
+                      type={showSignupPassword ? "text" : "password"} 
+                      placeholder="Create a password" 
+                      className="pr-10"
+                      minLength={8}
+                      required 
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignupPassword(!showSignupPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      tabIndex={-1}
+                    >
+                      {showSignupPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 {error && (
                   <div className="p-3 bg-destructive-light border border-destructive rounded-md">
