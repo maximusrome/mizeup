@@ -17,6 +17,7 @@ interface SessionCardProps {
 export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }: SessionCardProps) {
   const router = useRouter()
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showSyncWarning, setShowSyncWarning] = useState(false)
   const [isDeleting, setIsDeleting] = useState<'single' | 'all_future' | null>(null)
 
   const handleDeleteClick = () => {
@@ -137,7 +138,13 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push(`/notes/${session.id}`)}
+            onClick={() => {
+              if (!session.synced_to_therapynotes) {
+                setShowSyncWarning(true)
+                return
+              }
+              router.push(`/notes/${session.id}`)
+            }}
             className={noteButtonClassName}
             title={noteButtonTitle}
           >
@@ -241,6 +248,34 @@ export default function SessionCard({ session, onEdit, onDelete, onBulkDelete }:
                   )}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Sync Warning Dialog */}
+      {showSyncWarning && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowSyncWarning(false)}
+        >
+          <Card 
+            className="w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <CardTitle>Session Not Synced</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Please sync this session before creating a progress note.
+              </p>
+              <Button
+                onClick={() => setShowSyncWarning(false)}
+                className="w-full"
+              >
+                Got It
+              </Button>
             </CardContent>
           </Card>
         </div>
