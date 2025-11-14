@@ -67,7 +67,6 @@ export default function CalendarPage() {
 
   const weekDates = getWeekDates()
 
-
   // Load sessions from database
   const loadSessions = useCallback(async () => {
     try {
@@ -161,22 +160,14 @@ export default function CalendarPage() {
   }
 
   const handleSyncWeek = async () => {
-    const weekDates = getWeekDates().map(d => d.date)
-    const unsyncedSessions = sessions.filter(
-      s => weekDates.includes(s.date) && !s.synced_to_therapynotes
-    )
+    // Global: sync ALL past unsynced sessions
+    const unsyncedSessions = sessions.filter(s => {
+      const sessionEnd = new Date(`${s.date}T${s.end_time}`)
+      return sessionEnd < new Date() && !s.synced_to_therapynotes
+    })
 
     const totalSessions = unsyncedSessions.length
-
-    if (!totalSessions) {
-      setSyncTarget('sessions')
-      setSyncStatus('Already synced')
-      setTimeout(() => {
-        setSyncStatus(null)
-        setSyncTarget(null)
-      }, 3000)
-      return
-    }
+    if (!totalSessions) return
 
     setIsSyncing(true)
     setSyncTarget('sessions')
@@ -201,49 +192,20 @@ export default function CalendarPage() {
       prev.map(s => syncedIds.includes(s.id) ? { ...s, synced_to_therapynotes: true } : s)
     )
     setIsSyncing(false)
-    setSyncStatus(`Synced ${syncedIds.length}/${totalSessions}`)
-    setTimeout(() => {
-      setSyncStatus(null)
-      setSyncTarget(null)
-    }, 3000)
+    setSyncStatus(null)
+    setSyncTarget(null)
   }
 
   const handleSyncProgressNotes = async () => {
-    const weekDates = getWeekDates().map(d => d.date)
+    // Global: sync ALL unsynced notes
     const unsyncedNotes = sessions.filter(s => 
-      weekDates.includes(s.date) && 
       s.has_progress_note && 
       !s.progress_note_synced &&
-      s.synced_to_therapynotes // Session must be synced first
+      s.synced_to_therapynotes
     )
 
     const totalNotes = unsyncedNotes.length
-
-    if (!totalNotes) {
-      const hasUnsyncedSessions = sessions.some(s => 
-        weekDates.includes(s.date) && 
-        s.has_progress_note && 
-        !s.progress_note_synced &&
-        !s.synced_to_therapynotes
-      )
-      
-      if (hasUnsyncedSessions) {
-        setSyncTarget('notes')
-        setSyncStatus('Sync sessions first')
-        setTimeout(() => {
-          setSyncStatus(null)
-          setSyncTarget(null)
-        }, 3000)
-      } else {
-        setSyncTarget('notes')
-        setSyncStatus('Already synced')
-        setTimeout(() => {
-          setSyncStatus(null)
-          setSyncTarget(null)
-        }, 3000)
-      }
-      return
-    }
+    if (!totalNotes) return
 
     setIsSyncingNotes(true)
     setSyncTarget('notes')
@@ -279,11 +241,8 @@ export default function CalendarPage() {
     )
     
     setIsSyncingNotes(false)
-    setSyncStatus(`Synced ${syncedIds.length}/${totalNotes}`)
-    setTimeout(() => {
-      setSyncStatus(null)
-      setSyncTarget(null)
-    }, 3000)
+    setSyncStatus(null)
+    setSyncTarget(null)
   }
 
   const renderSyncLabel = (target: 'sessions' | 'notes', defaultLabel: string) => {
@@ -291,6 +250,7 @@ export default function CalendarPage() {
       return defaultLabel
     }
 
+    // Only show syncing state with spinner
     if (syncStatus.startsWith('Syncing')) {
       return (
         <span className="inline-flex items-center gap-1.5">
@@ -319,26 +279,29 @@ export default function CalendarPage() {
       )
     }
 
-    if (syncStatus.startsWith('Synced')) {
-      return (
-        <span className="inline-flex items-center gap-1.5">
-          <svg
-            className="h-3.5 w-3.5 text-white"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.5}
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {syncStatus}
-        </span>
-      )
-    }
-
-    return syncStatus
+    return defaultLabel
   }
+
+  // Calculate global counts for button labels
+  const pastUnsyncedCount = sessions.filter(s => {
+    const sessionEnd = new Date(`${s.date}T${s.end_time}`)
+    return sessionEnd < new Date() && !s.synced_to_therapynotes
+  }).length
+
+  const unsyncedNotesCount = sessions.filter(s => 
+    s.synced_to_therapynotes && 
+    s.has_progress_note && 
+    !s.progress_note_synced
+  ).length
+
+  // Button labels based on state
+  const sessionsLabel = pastUnsyncedCount > 0 
+    ? `Sync Past Sessions (${pastUnsyncedCount})`
+    : 'Sessions Synced ✓'
+  
+  const notesLabel = unsyncedNotesCount > 0
+    ? `Sync Notes (${unsyncedNotesCount})`
+    : 'Notes Synced ✓'
 
   return (
     <>
@@ -351,28 +314,34 @@ export default function CalendarPage() {
                   variant="secondary"
                   size="sm"
                   onClick={handleSyncWeek}
-                  disabled={isSyncing || isSyncingNotes}
-                  className="h-8 px-2 sm:px-3 text-xs text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110 whitespace-nowrap"
+                  disabled={pastUnsyncedCount === 0 || isSyncing || isSyncingNotes}
+                  className={`h-8 px-2 sm:px-3 text-xs whitespace-nowrap ${
+                    pastUnsyncedCount === 0 
+                      ? 'bg-background border-2 border-border text-foreground cursor-default hover:bg-background' 
+                      : 'text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110'
+                  }`}
                   style={{ backgroundImage: 'none' }}
                 >
-                  {renderSyncLabel('sessions', 'Sync Sessions')}
+                  {renderSyncLabel('sessions', sessionsLabel)}
                 </Button>
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={handleSyncProgressNotes}
-                  disabled={isSyncingNotes || isSyncing}
-                  className="h-8 px-2 sm:px-3 text-xs text-white bg-[var(--secondary)] hover:bg-[var(--secondary)] hover:brightness-110 whitespace-nowrap"
+                  disabled={unsyncedNotesCount === 0 || isSyncingNotes || isSyncing}
+                  className={`h-8 px-2 sm:px-3 text-xs whitespace-nowrap ${
+                    unsyncedNotesCount === 0
+                      ? 'bg-background border-2 border-border text-foreground cursor-default hover:bg-background'
+                      : 'text-white bg-[var(--secondary)] hover:bg-[var(--secondary)] hover:brightness-110'
+                  }`}
                   style={{ backgroundImage: 'none' }}
                 >
-                  {renderSyncLabel('notes', 'Sync Notes')}
+                  {renderSyncLabel('notes', notesLabel)}
                 </Button>
               </div>
             </div>
 
-            {/* Weekly Calendar */}
-            {/* Week Navigation */}
-              <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
               <Button
                 variant="ghost"
                 size="sm"
@@ -387,23 +356,13 @@ export default function CalendarPage() {
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-foreground">
                   {(() => {
-                    const today = new Date()
-                    const dayOfWeek = today.getDay()
-                    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+                    const startDate = parseLocalDateString(weekDates[0].date)
+                    const endDate = parseLocalDateString(weekDates[6].date)
                     
-                    const monday = new Date(today)
-                    monday.setDate(today.getDate() - daysFromMonday)
-                    
-                    const startOfWeek = new Date(monday)
-                    startOfWeek.setDate(monday.getDate() + (currentWeekOffset * 7))
-                    
-                    const endOfWeek = new Date(startOfWeek)
-                    endOfWeek.setDate(startOfWeek.getDate() + 6)
-                    
-                    const startMonth = startOfWeek.toLocaleDateString('en-US', { month: 'short' })
-                    const startDay = startOfWeek.getDate()
-                    const endMonth = endOfWeek.toLocaleDateString('en-US', { month: 'short' })
-                    const endDay = endOfWeek.getDate()
+                    const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' })
+                    const startDay = startDate.getDate()
+                    const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' })
+                    const endDay = endDate.getDate()
                     
                     if (startMonth === endMonth) {
                       return `${startMonth} ${startDay}-${endDay}`
@@ -438,10 +397,7 @@ export default function CalendarPage() {
               </Button>
             </div>
 
-            <div 
-              className="space-y-3 pb-6"
-            >
-              {/* Week Days */}
+            <div className="space-y-3 pb-6">
               {weekDates.map((dayData) => {
                 const daySessions = getSessionsForDate(dayData.date)
                 const formattedDate = formatDate(dayData.date)
@@ -481,7 +437,6 @@ export default function CalendarPage() {
                       </div>
                     </div>
 
-                    {/* Sessions for this day */}
                     {isLoading ? (
                       <div className="text-sm text-muted-foreground">Loading...</div>
                     ) : daySessions.length > 0 ? (
