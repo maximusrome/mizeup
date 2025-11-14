@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { getClients, createSession, createRecurringSessions, updateSessionWithScope, deleteSession, deleteFutureSessions } from '@/lib/api'
+import { getClients, createClient, createSession, createRecurringSessions, updateSessionWithScope, deleteSession, deleteFutureSessions } from '@/lib/api'
 import type { Client, Session } from '@/types'
 
 // Constants
@@ -78,11 +78,13 @@ export default function SessionModal({
 }: SessionModalProps) {
   const [clients, setClients] = useState<Client[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [isCreatingClient, setIsCreatingClient] = useState(false)
   const [showClientDropdown, setShowClientDropdown] = useState(false)
   const [activeClientIndex, setActiveClientIndex] = useState(0)
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null)
-  const [lastSelectedClientName, setLastSelectedClientName] = useState('')
   const [showUpdateScopeDialog, setShowUpdateScopeDialog] = useState(false)
+  const isCreatingClientRef = useRef(false)
+  const clientNameInputRef = useRef<HTMLInputElement>(null)
   type SessionData = {
     client_id: string
     date: string
@@ -129,7 +131,6 @@ export default function SessionModal({
       const editingClientName = editingSession.clients?.name || ''
       if (editingClientName) {
         setSelectedClientId(editingSession.client_id)
-        setLastSelectedClientName(editingClientName)
       }
     } else {
       form.reset({
@@ -141,7 +142,6 @@ export default function SessionModal({
         recurringEndDate: '',
       })
       setSelectedClientId(null)
-      setLastSelectedClientName('')
       setActiveClientIndex(0)
     }
   }, [isOpen, editingSession, selectedDate, form])
@@ -152,6 +152,40 @@ export default function SessionModal({
       setClients(clientsData)
     } catch {
       // Silently handle client loading errors
+    }
+  }
+
+  const capitalizeName = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ')
+  }
+
+  const handleCreateClient = async (name: string) => {
+    const trimmedName = name.trim()
+    if (!trimmedName || isCreatingClientRef.current) return
+
+    try {
+      setIsCreatingClient(true)
+      isCreatingClientRef.current = true
+      setShowClientDropdown(false)
+      clientNameInputRef.current?.blur()
+      const capitalizedName = capitalizeName(trimmedName)
+      const newClient = await createClient({ name: capitalizedName })
+      setClients(prev => [...prev, newClient])
+      setSelectedClientId(newClient.id)
+      form.setValue('clientName', newClient.name, { shouldDirty: true, shouldValidate: true })
+      form.clearErrors('clientName')
+    } catch (error) {
+      form.setError('clientName', { 
+        type: 'manual', 
+        message: error instanceof Error ? error.message : 'Failed to create client' 
+      })
+      setShowClientDropdown(true)
+    } finally {
+      setIsCreatingClient(false)
+      isCreatingClientRef.current = false
     }
   }
 
@@ -166,11 +200,19 @@ export default function SessionModal({
     client.name.toLowerCase().includes(clientNameValue)
   )
 
+  // Determine if we should show "Create new" option
+  const trimmedInput = clientNameRaw.trim()
+  const trimmedInputLower = trimmedInput.toLowerCase()
+  const hasExactMatch = clients.some(
+    client => client.name.toLowerCase() === trimmedInputLower
+  )
+  const showCreateOption = trimmedInput.length > 0 && !hasExactMatch && !isCreatingClient
+  const totalOptions = filteredClients.length + (showCreateOption ? 1 : 0)
+
+  // Auto-match when clients list updates (e.g., after creating new client)
   useEffect(() => {
-    const currentName = form.getValues('clientName') || ''
-    if (!currentName) {
-      setSelectedClientId(null)
-      setLastSelectedClientName('')
+    const currentName = form.watch('clientName') || ''
+    if (!currentName.trim()) {
       return
     }
 
@@ -180,14 +222,14 @@ export default function SessionModal({
 
     if (match) {
       setSelectedClientId(match.id)
-      setLastSelectedClientName(match.name)
     }
-  }, [clients, form])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients])
 
   useEffect(() => {
     if (!showClientDropdown) return
     setActiveClientIndex(0)
-  }, [clientNameValue, showClientDropdown, filteredClients.length])
+  }, [clientNameValue, showClientDropdown, totalOptions])
 
 
   // Helper function to handle session conversion scenarios
@@ -444,30 +486,29 @@ export default function SessionModal({
                         <div className="flex gap-2">
                           <div className="relative flex-1">
                             <Input 
-                              placeholder="Search clients"
+                              placeholder="Enter client name"
                               {...field}
+                              ref={(e) => {
+                                field.ref(e)
+                                clientNameInputRef.current = e
+                              }}
                               onFocus={() => {
                                 setShowClientDropdown(true)
                               }}
                               onBlur={() => setTimeout(() => {
+                                if (isCreatingClientRef.current) return
                                 setShowClientDropdown(false)
                                 const trimmedValue = (form.getValues('clientName') || '').trim()
-                                const match = clients.find(
-                                  client => client.name.toLowerCase() === trimmedValue.toLowerCase()
-                                )
-
-                                if (match) {
-                                  setSelectedClientId(match.id)
-                                  setLastSelectedClientName(match.name)
-                                  form.setValue('clientName', match.name, { shouldDirty: true, shouldValidate: true })
-                                } else if (lastSelectedClientName) {
-                                  form.setValue('clientName', lastSelectedClientName, { shouldValidate: true })
-                                  setSelectedClientId(
-                                    clients.find(c => c.name === lastSelectedClientName)?.id || null
+                                
+                                // Only normalize if exact match exists
+                                if (trimmedValue) {
+                                  const match = clients.find(
+                                    client => client.name.toLowerCase() === trimmedValue.toLowerCase()
                                   )
-                                } else {
-                                  form.setValue('clientName', '', { shouldValidate: true })
-                                  setSelectedClientId(null)
+                                  if (match) {
+                                    setSelectedClientId(match.id)
+                                    form.setValue('clientName', match.name, { shouldDirty: true, shouldValidate: true })
+                                  }
                                 }
                               }, DROPDOWN_CLOSE_DELAY)}
                               onChange={(event) => {
@@ -484,33 +525,37 @@ export default function SessionModal({
                                   )
                                   if (match) {
                                     setSelectedClientId(match.id)
-                                    setLastSelectedClientName(match.name)
                                   } else {
                                     setSelectedClientId(null)
                                   }
                                 }
                               }}
                               onKeyDown={(event) => {
-                                if (!filteredClients.length) return
+                                if (totalOptions === 0) return
 
                                 if (event.key === 'ArrowDown') {
                                   event.preventDefault()
                                   setShowClientDropdown(true)
-                                  setActiveClientIndex(prev => (prev + 1) % filteredClients.length)
+                                  setActiveClientIndex(prev => (prev + 1) % totalOptions)
                                 } else if (event.key === 'ArrowUp') {
                                   event.preventDefault()
                                   setShowClientDropdown(true)
-                                  setActiveClientIndex(prev => (prev - 1 + filteredClients.length) % filteredClients.length)
+                                  setActiveClientIndex(prev => (prev - 1 + totalOptions) % totalOptions)
                                 } else if (event.key === 'Enter') {
                                   if (!showClientDropdown) return
                                   event.preventDefault()
-                                  const client = filteredClients[activeClientIndex]
-                                  if (client) {
-                                    field.onChange(client.name)
-                                    setSelectedClientId(client.id)
-                                    setLastSelectedClientName(client.name)
-                                    form.clearErrors('clientName')
-                                    setShowClientDropdown(false)
+                                  const isCreateOption = showCreateOption && activeClientIndex === filteredClients.length
+                                  if (isCreateOption && trimmedInput) {
+                                    handleCreateClient(trimmedInput)
+                                  } else {
+                                    const client = filteredClients[activeClientIndex]
+                                    if (client) {
+                                      field.onChange(client.name)
+                                      setSelectedClientId(client.id)
+                                      form.clearErrors('clientName')
+                                      setShowClientDropdown(false)
+                                      clientNameInputRef.current?.blur()
+                                    }
                                   }
                                 } else if (event.key === 'Escape') {
                                   setShowClientDropdown(false)
@@ -520,29 +565,53 @@ export default function SessionModal({
                             />
                             {showClientDropdown && (
                               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                                {filteredClients.length > 0 ? (
-                                  filteredClients.map((client, index) => (
-                                    <button
-                                      key={client.id}
-                                      type="button"
-                                      className={`w-full px-3 py-2 text-left focus:outline-none border-b border-gray-100 last:border-b-0 ${
-                                        index === activeClientIndex
-                                          ? 'bg-primary/10 text-primary'
-                                          : 'hover:bg-gray-100 focus:bg-gray-100'
-                                      }`}
-                                      onMouseEnter={() => setActiveClientIndex(index)}
-                                      onClick={() => {
-                                        field.onChange(client.name)
-                                        setSelectedClientId(client.id)
-                                        setLastSelectedClientName(client.name)
-                                        form.clearErrors('clientName')
-                                        setShowClientDropdown(false)
-                                      }}
-                                    >
-                                      {client.name}
-                                    </button>
-                                  ))
-                                ) : (
+                                {filteredClients.length > 0 && filteredClients.map((client, index) => (
+                                  <button
+                                    key={client.id}
+                                    type="button"
+                                    className={`w-full px-3 py-2 text-left focus:outline-none border-b border-gray-100 ${
+                                      index === activeClientIndex
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'hover:bg-gray-100 focus:bg-gray-100'
+                                    }`}
+                                    onMouseEnter={() => setActiveClientIndex(index)}
+                                    onClick={() => {
+                                      field.onChange(client.name)
+                                      setSelectedClientId(client.id)
+                                      form.clearErrors('clientName')
+                                      setShowClientDropdown(false)
+                                      clientNameInputRef.current?.blur()
+                                    }}
+                                  >
+                                    {client.name}
+                                  </button>
+                                ))}
+                                {showCreateOption && (
+                                  <button
+                                    type="button"
+                                    className={`w-full px-3 py-2 text-left focus:outline-none border-t border-gray-200 ${
+                                      activeClientIndex === filteredClients.length
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'hover:bg-gray-100 focus:bg-gray-100'
+                                    }`}
+                                    onMouseEnter={() => setActiveClientIndex(filteredClients.length)}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault()
+                                      handleCreateClient(trimmedInput)
+                                    }}
+                                    disabled={isCreatingClient}
+                                  >
+                                    {isCreatingClient ? (
+                                      <span className="text-muted-foreground">Creating...</span>
+                                    ) : (
+                                      <span className="flex items-center gap-2">
+                                        <span>+</span>
+                                        <span>Create &quot;{trimmedInput}&quot;</span>
+                                      </span>
+                                    )}
+                                  </button>
+                                )}
+                                {filteredClients.length === 0 && !showCreateOption && (
                                   <div className="px-3 py-2 text-sm text-muted-foreground">
                                     No clients found
                                   </div>
