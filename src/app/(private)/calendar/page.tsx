@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import SessionModal from './_components/session-modal'
@@ -19,6 +19,7 @@ export default function CalendarPage() {
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
   const [syncTarget, setSyncTarget] = useState<'sessions' | 'notes' | null>(null)
   const [isSyncingNotes, setIsSyncingNotes] = useState(false)
+  const todayCardRef = useRef<HTMLDivElement>(null)
 
   // Local date helpers to avoid UTC shifting issues
   const getLocalDateString = (date: Date) => {
@@ -33,12 +34,21 @@ export default function CalendarPage() {
     return new Date(y, m - 1, d)
   }
 
-  // Get week dates starting from today based on current offset
+  // Get week dates starting from Monday of current week
   const getWeekDates = () => {
     const today = new Date()
     const todayLocal = getLocalDateString(today)
-    const startOfWeek = new Date(today)
-    startOfWeek.setDate(today.getDate() + (currentWeekOffset * 7))
+    
+    // Calculate Monday of the current week
+    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Sunday = 6 days back, Monday = 0
+    
+    const monday = new Date(today)
+    monday.setDate(today.getDate() - daysFromMonday)
+    
+    // Apply week offset (for navigation)
+    const startOfWeek = new Date(monday)
+    startOfWeek.setDate(monday.getDate() + (currentWeekOffset * 7))
 
     const weekDates = []
     for (let i = 0; i < 7; i++) {
@@ -378,8 +388,15 @@ export default function CalendarPage() {
                 <span className="text-sm font-medium text-foreground">
                   {(() => {
                     const today = new Date()
-                    const startOfWeek = new Date(today)
-                    startOfWeek.setDate(today.getDate() + (currentWeekOffset * 7))
+                    const dayOfWeek = today.getDay()
+                    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+                    
+                    const monday = new Date(today)
+                    monday.setDate(today.getDate() - daysFromMonday)
+                    
+                    const startOfWeek = new Date(monday)
+                    startOfWeek.setDate(monday.getDate() + (currentWeekOffset * 7))
+                    
                     const endOfWeek = new Date(startOfWeek)
                     endOfWeek.setDate(startOfWeek.getDate() + 6)
                     
@@ -399,7 +416,10 @@ export default function CalendarPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentWeekOffset(0)}
+                  onClick={() => {
+                    setCurrentWeekOffset(0)
+                    setTimeout(() => todayCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+                  }}
                   className="h-8 px-3 text-xs"
                 >
                   Today
@@ -428,7 +448,8 @@ export default function CalendarPage() {
                 
                 return (
                   <Card 
-                    key={dayData.date} 
+                    key={dayData.date}
+                    ref={dayData.isToday ? todayCardRef : null}
                     className={`px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors border ${
                       dayData.isToday ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]/30' : 'border-border'
                     }`}
