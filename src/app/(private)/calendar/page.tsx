@@ -296,12 +296,12 @@ export default function CalendarPage() {
 
   // Button labels based on state
   const sessionsLabel = pastUnsyncedCount > 0 
-    ? `Sync Past Sessions (${pastUnsyncedCount})`
-    : 'Sessions Synced ✓'
+    ? `Sync Sessions (${pastUnsyncedCount})`
+    : 'Sessions Synced'
   
   const notesLabel = unsyncedNotesCount > 0
     ? `Sync Notes (${unsyncedNotesCount})`
-    : 'Notes Synced ✓'
+    : 'Notes Synced'
 
   return (
     <>

@@ -3,7 +3,6 @@ import TherapyNotesCredentials from './_components/therapynotes-form'
 import ReminderSettings from './_components/reminder-settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
-import { User, Mail, Calendar } from 'lucide-react'
 
 export default async function AccountPage() {
   const supabase = await createClient()
@@ -29,31 +28,26 @@ export default async function AccountPage() {
             </div>
             
             <div className="space-y-6">
-              {/* User Information Card */}
+              {/* Account Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Account Information
-                  </CardTitle>
+                  <CardTitle>Account</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Email</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Email</p>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium">Member Since</p>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(user.created_at)}
-                      </p>
-                    </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium">Member Since</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(user.created_at)}
+                    </p>
+                  </div>
+
+                  <div className="pt-4">
+                    <SignOutButton />
                   </div>
                 </CardContent>
               </Card>
@@ -63,16 +57,6 @@ export default async function AccountPage() {
 
               {/* Session Reminders */}
               <ReminderSettings />
-
-              {/* Log Out Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Log Out</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SignOutButton />
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>
