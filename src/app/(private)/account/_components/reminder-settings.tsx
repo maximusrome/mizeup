@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -113,19 +114,18 @@ export default function ReminderSettings() {
               onClick={() => setShowGuide(!showGuide)}
               className="w-full flex items-center justify-between p-3 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
             >
-              <span className="text-sm font-medium">iPhone Shortcuts Setup</span>
+              <span className="text-sm font-medium">How to automate Session Reminders</span>
               <span className={`transition-transform ${showGuide ? 'rotate-180' : ''}`}>▼</span>
             </button>
             
             {showGuide && (
               <div className="p-4 border rounded-lg space-y-4 bg-background">
-                {/* Step 1: Copy URL */}
+                {/* Copy URL Section */}
                 <div>
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
                     <p className="text-sm font-medium">Copy Your API URL</p>
                   </div>
-                  <div className="ml-8 space-y-2">
+                  <div className="space-y-2">
                     <div className="flex gap-2">
                       <Input
                         readOnly
@@ -147,71 +147,111 @@ export default function ReminderSettings() {
                         {copied ? 'Copied!' : 'Copy'}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Open the Shortcuts app on your iPhone, then continue below.
-                    </p>
                   </div>
                 </div>
 
-                {/* Step 2: Build Shortcut */}
+                {/* Step by Step Instructions */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
-                    <p className="text-sm font-medium">Build the Shortcut</p>
-                  </div>
-                  <div className="ml-8 space-y-3">
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">1. Add &quot;Get Contents of URL&quot;</p>
-                      <p className="text-xs text-muted-foreground ml-4">• Paste your API URL</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">2. Add &quot;Repeat with Each&quot;</p>
-                      <p className="text-xs text-muted-foreground ml-4">• Link to: <code className="bg-muted px-1 rounded">Contents of URL</code></p>
-                    </div>
-                    <div className="pl-4 border-l-2 border-muted space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase">Inside the loop:</p>
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">3. Add &quot;Get Value for Key&quot;</p>
-                        <p className="text-xs text-muted-foreground ml-4">• Input: <code className="bg-muted px-1 rounded">Repeat Item</code></p>
-                        <p className="text-xs text-muted-foreground ml-4">• Key: <code className="bg-muted px-1 rounded">phoneNumber</code></p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">4. Add &quot;Get Value for Key&quot;</p>
-                        <p className="text-xs text-muted-foreground ml-4">• Input: <code className="bg-muted px-1 rounded">Repeat Item</code></p>
-                        <p className="text-xs text-muted-foreground ml-4">• Key: <code className="bg-muted px-1 rounded">message</code></p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs font-medium text-muted-foreground">5. Add &quot;Send Message&quot;</p>
-                        <p className="text-xs text-muted-foreground ml-4">• Recipients: <code className="bg-muted px-1 rounded">Dictionary Value</code> (phone)</p>
-                        <p className="text-xs text-muted-foreground ml-4">• Message: <code className="bg-muted px-1 rounded">Dictionary Value</code> (message)</p>
-                        <p className="text-xs text-muted-foreground ml-4">• Turn OFF &quot;Show Compose Sheet&quot;</p>
-                      </div>
-                    </div>
-                  </div>
+                  <h3 className="text-sm font-semibold mb-3">Step by step: How to automate Session Reminders</h3>
+                  <ol className="space-y-2 text-sm text-muted-foreground">
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">1.</span>
+                      <span>Open shortcuts app on iPhone</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">2.</span>
+                      <span>Go to Automations tab and click New Automation</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">3.</span>
+                      <span>Set time of day for sending your session reminders</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">4.</span>
+                      <span>Click Run immediately (optional toggle notify when Run)</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">5.</span>
+                      <span>Click Next</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">6.</span>
+                      <span>Click Create New Shortcut</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">7.</span>
+                      <span>Search for &apos;Get contents of URL&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">8.</span>
+                      <span>Paste in URL from MizeUp</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">9.</span>
+                      <span>Search for &apos;Repeat with Each&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">10.</span>
+                      <span>Search for &apos;Get Dictionary Value&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">11.</span>
+                      <span>Drag it under &apos;Repeat with Each&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">12.</span>
+                      <span>Click key and type &apos;phoneNumber&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">13.</span>
+                      <span>Search for &apos;Send Message&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">14.</span>
+                      <span>Click Recipients and select &apos;Dictionary Value&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">15.</span>
+                      <span>Search for &apos;Get Dictionary Value&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">16.</span>
+                      <span>Drag it under &apos;Repeat with Each&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">17.</span>
+                      <span>Click key and type &apos;message&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">18.</span>
+                      <span>Click &apos;Dictionary Value&apos; and select &apos;Repeat Item&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">19.</span>
+                      <span>Click Message on the Send Message and select &apos;Dictionary Value&apos;</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">20.</span>
+                      <span>Drag Send message under Get Dictionary for message</span>
+                    </li>
+                    <li className="flex gap-2">
+                      <span className="font-medium text-foreground">21.</span>
+                      <span>Click the checkmark</span>
+                    </li>
+                  </ol>
                 </div>
 
-                {/* Step 3: Name & Test */}
+                {/* Image Reference */}
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
-                    <p className="text-sm font-medium">Name & Test</p>
-                  </div>
-                  <div className="ml-8 space-y-1">
-                    <p className="text-xs text-muted-foreground">• Rename to &quot;MizeUp Reminders&quot;</p>
-                    <p className="text-xs text-muted-foreground">• Tap play button (▶️) to test</p>
-                  </div>
-                </div>
-
-                {/* Step 4: Automation */}
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex items-center justify-center w-6 h-6 rounded-full bg-green-600 text-white text-xs font-bold">4</span>
-                    <p className="text-sm font-medium">Create Automation (Optional)</p>
-                  </div>
-                  <div className="ml-8 space-y-1">
-                    <p className="text-xs text-muted-foreground">• Go to &quot;Automation&quot; tab → &quot;+&quot; → &quot;Time of Day&quot;</p>
-                    <p className="text-xs text-muted-foreground">• Set time → Add &quot;Run Shortcut&quot; → Select &quot;MizeUp Reminders&quot;</p>
-                    <p className="text-xs text-muted-foreground">• Turn OFF &quot;Ask Before Running&quot;</p>
+                  <p className="text-sm font-medium mb-2">Example:</p>
+                  <div className="border rounded-lg overflow-hidden bg-muted/50 relative w-full">
+                    <Image 
+                      src="/shortcuts-example.png" 
+                      alt="MizeUp reminder shortcut example showing the workflow steps"
+                      width={800}
+                      height={600}
+                      className="w-full h-auto"
+                    />
                   </div>
                 </div>
               </div>

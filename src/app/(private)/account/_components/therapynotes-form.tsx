@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Building2, Eye, EyeOff, Check } from 'lucide-react'
+import { Eye, EyeOff, Check } from 'lucide-react'
 
 interface Credentials {
   therapynotes_username: string
@@ -85,10 +85,7 @@ export default function TherapyNotesCredentials() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            TherapyNotes Integration
-          </CardTitle>
+          <CardTitle>TherapyNotes Integration</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">Loading...</p>
@@ -99,18 +96,17 @@ export default function TherapyNotesCredentials() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building2 className="h-5 w-5" />
-          TherapyNotes Integration
-          {isConnected && (
-            <span className="ml-auto flex items-center gap-1 text-sm font-normal text-green-600">
-              <Check className="h-4 w-4" />
-              Connected
-            </span>
-          )}
-        </CardTitle>
-      </CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            TherapyNotes Integration
+            {isConnected && (
+              <span className="ml-auto flex items-center gap-1 text-sm font-normal text-green-600">
+                <Check className="h-4 w-4" />
+                Connected
+              </span>
+            )}
+          </CardTitle>
+        </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="practice-code">Practice Code</Label>

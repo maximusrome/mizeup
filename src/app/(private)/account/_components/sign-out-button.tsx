@@ -23,7 +23,6 @@ export default function SignOutButton() {
       onClick={handleSignOut} 
       variant="outline" 
       disabled={isLoading}
-      className="w-full sm:w-auto"
     >
       {isLoading ? 'Logging Out...' : 'Log Out'}
     </Button>
