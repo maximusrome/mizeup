@@ -4,20 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ical = require('ical')
 
-function formatDateTime(dateString: string) {
-  const date = new Date(dateString)
-  const year = date.getUTCFullYear()
-  const month = String(date.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(date.getUTCDate()).padStart(2, '0')
-  const hours = String(date.getUTCHours()).padStart(2, '0')
-  const minutes = String(date.getUTCMinutes()).padStart(2, '0')
-  
-  return {
-    date: `${year}-${month}-${day}`,
-    time: `${hours}:${minutes}:00`
-  }
-}
-
 async function parseIcalFeed(url: string) {
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch calendar')
