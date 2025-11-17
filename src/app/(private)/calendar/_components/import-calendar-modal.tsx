@@ -48,6 +48,7 @@ export default function ImportCalendarModal({
   const [events, setEvents] = useState<CalendarEventWithMapping[]>([])
   const [clients, setClients] = useState<Client[]>([])
   const [loading, setLoading] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [needsSetup, setNeedsSetup] = useState(false)
   const [creatingClientForEvent, setCreatingClientForEvent] = useState<string | null>(null)
   const isCreatingClientRef = useRef(false)
@@ -157,7 +158,7 @@ export default function ImportCalendarModal({
   }
 
   const handleImport = async () => {
-    setLoading(true)
+    setImporting(true)
     try {
       const selected = events.filter(e => e.selected && e.matchedClientId)
       const sessions = selected.map(e => {
@@ -178,8 +179,8 @@ export default function ImportCalendarModal({
       onClose()
     } catch {
       alert('Failed to import sessions. Please try again.')
+      setImporting(false)
     }
-    setLoading(false)
   }
 
   if (!isOpen) return null
@@ -417,10 +418,10 @@ export default function ImportCalendarModal({
               <div className="pt-2">
                 <Button 
                   onClick={handleImport}
-                  disabled={loading || selectedCount === 0}
+                  disabled={loading || importing || selectedCount === 0}
                   className="w-full"
                 >
-                  {loading ? 'Importing...' : `Import ${selectedCount} Session${selectedCount !== 1 ? 's' : ''}`}
+                  {importing ? 'Importing...' : `Import ${selectedCount} Session${selectedCount !== 1 ? 's' : ''}`}
                 </Button>
               </div>
             </>
