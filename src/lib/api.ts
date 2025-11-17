@@ -5,7 +5,8 @@ import type {
   UpdateClientRequest,
   CreateSessionRequest,
   UpdateSessionRequest,
-  ApiResponse 
+  ApiResponse,
+  CalendarEventWithMapping
 } from '@/types'
 
 // CLIENT API FUNCTIONS
@@ -162,5 +163,56 @@ export async function deleteFutureSessions(id: string): Promise<void> {
     const result: ApiResponse<never> = await response.json()
     throw new Error(result.error || 'Failed to delete future sessions')
   }
+}
+
+// CALENDAR IMPORT API FUNCTIONS
+export async function connectCalendar(icalUrl: string): Promise<void> {
+  const response = await fetch('/api/calendar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ icalUrl })
+  })
+  
+  if (!response.ok) {
+    const result: ApiResponse<never> = await response.json()
+    throw new Error(result.error || 'Failed to connect calendar')
+  }
+}
+
+export async function fetchCalendarEvents(): Promise<{
+  events: CalendarEventWithMapping[]
+  clients: Client[]
+  needsSetup: boolean
+}> {
+  const response = await fetch('/api/calendar')
+  const result = await response.json()
+  
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to fetch calendar events')
+  }
+  
+  return result
+}
+
+export async function importCalendarSessions(sessions: Array<{
+  client_id: string
+  date: string
+  start_time: string
+  end_time: string
+  calendar_title: string
+}>): Promise<Session[]> {
+  const response = await fetch('/api/calendar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessions })
+  })
+  
+  const result: ApiResponse<Session[]> = await response.json()
+  
+  if (!response.ok) {
+    throw new Error(result.error || 'Failed to import sessions')
+  }
+  
+  return result.data || []
 }
 

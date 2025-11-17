@@ -1,6 +1,7 @@
 import SignOutButton from './_components/sign-out-button'
 import TherapyNotesCredentials from './_components/therapynotes-form'
 import ReminderSettings from './_components/reminder-settings'
+import CalendarSettings from './_components/calendar-settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
 
@@ -54,6 +55,9 @@ export default async function AccountPage() {
 
               {/* TherapyNotes Integration */}
               <TherapyNotesCredentials />
+
+              {/* Calendar Import */}
+              <CalendarSettings />
 
               {/* Session Reminders */}
               <ReminderSettings />

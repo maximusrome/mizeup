@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import SessionModal from './_components/session-modal'
 import SessionCard from './_components/session-card'
+import ImportCalendarModal from './_components/import-calendar-modal'
 import { getSessions } from '@/lib/api'
 import type { Session } from '@/types'
 
@@ -19,6 +20,7 @@ export default function CalendarPage() {
   const [syncStatus, setSyncStatus] = useState<string | null>(null)
   const [syncTarget, setSyncTarget] = useState<'sessions' | 'notes' | null>(null)
   const [isSyncingNotes, setIsSyncingNotes] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const todayCardRef = useRef<HTMLDivElement>(null)
 
   // Local date helpers to avoid UTC shifting issues
@@ -245,6 +247,10 @@ export default function CalendarPage() {
     setSyncTarget(null)
   }
 
+  const handleImportedSessions = (imported: Session[]) => {
+    setSessions(prev => sortSessions([...prev, ...imported]))
+  }
+
   const renderSyncLabel = (target: 'sessions' | 'notes', defaultLabel: string) => {
     if (syncTarget !== target || !syncStatus) {
       return defaultLabel
@@ -307,9 +313,17 @@ export default function CalendarPage() {
     <>
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="py-6">
-            <div className="mb-6 flex items-center justify-between gap-3">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="h-8 px-2 sm:px-3 text-xs whitespace-nowrap"
+                >
+                  Import Sessions
+                </Button>
                 <Button
                   variant="secondary"
                   size="sm"
@@ -383,6 +397,7 @@ export default function CalendarPage() {
                 >
                   Today
                 </Button>
+                
               </div>
               
               <Button
@@ -475,6 +490,13 @@ export default function CalendarPage() {
         onSave={handleSessionSave}
         onSaveMultiple={handleSessionSaveMultiple}
         onBulkDelete={handleBulkDelete}
+      />
+
+      {/* Import Sessions Modal */}
+      <ImportCalendarModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImport={handleImportedSessions}
       />
     </>
   )
