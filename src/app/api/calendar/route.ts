@@ -4,19 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const ical = require('ical')
 
-function formatDateTime(date: Date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  
-  return {
-    date: `${year}-${month}-${day}`,
-    time: `${hours}:${minutes}:00`
-  }
-}
-
 async function parseIcalFeed(url: string) {
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch calendar')
@@ -34,11 +21,15 @@ async function parseIcalFeed(url: string) {
     // Only include past sessions (within last 2 weeks, but not future)
     if (start < twoWeeksAgo || start > now) continue
     
+    const formatDateForStorage = (date: Date) => {
+      return date.toISOString()
+    }
+    
     events.push({
       uid: event.uid,
       title: event.summary || 'Untitled',
-      start: event.start.toISOString(),
-      end: event.end.toISOString()
+      start: formatDateForStorage(event.start),
+      end: formatDateForStorage(event.end)
     })
   }
   
@@ -101,16 +92,19 @@ export async function GET(req: NextRequest) {
     const existingSet = new Set(
       existingSessions?.map(s => `${s.client_id}|${s.date}|${s.start_time}`) || []
     )
+    const existingTimesSet = new Set(
+      existingSessions?.map(s => `${s.date}|${s.start_time}`) || []
+    )
 
     const eventsWithMatches = events
       .map(event => {
         const match = findMatchingClient(event.title, clients || [])
-        const { date, time } = formatDateTime(new Date(event.start))
+        const eventDate = new Date(event.start)
+        const date = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`
+        const time = `${String(eventDate.getHours()).padStart(2, '0')}:${String(eventDate.getMinutes()).padStart(2, '0')}:00`
         
-        // Skip events that already exist
-        if (match && existingSet.has(`${match.id}|${date}|${time}`)) {
-          return null
-        }
+        if (match && existingSet.has(`${match.id}|${date}|${time}`)) return null
+        if (existingTimesSet.has(`${date}|${time}`)) return null
         
         // Auto-select if there's an exact nickname match (previously matched)
         // Otherwise require manual matching
