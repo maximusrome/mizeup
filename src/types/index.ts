@@ -7,6 +7,7 @@ export interface Therapist {
   updated_at: string
   reminder_message_template?: string
   reminder_api_key?: string
+  ical_feed_url?: string
 }
 
 export interface Client {
@@ -16,6 +17,7 @@ export interface Client {
   therapynotes_patient_id?: number
   therapynotes_encrypted_patient_id?: string
   phone_number?: string
+  calendar_nickname?: string
   created_at: string
   updated_at: string
 }
@@ -157,4 +159,18 @@ export interface PaginatedResponse<T> {
   count: number
   page: number
   limit: number
+}
+
+// Calendar import types
+export interface CalendarEvent {
+  uid: string
+  title: string
+  start: string
+  end: string
+}
+
+export interface CalendarEventWithMapping extends CalendarEvent {
+  selected: boolean
+  matchedClientId?: string
+  matchedClientName?: string
 }
