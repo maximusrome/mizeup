@@ -205,7 +205,7 @@ export default function ImportCalendarModal({
               variant="ghost"
               size="sm"
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground h-8 w-8 p-0 rounded-full"
+              className="text-muted-foreground hover:text-foreground h-10 w-10 p-0 rounded-full text-lg"
             >
               ×
             </Button>
@@ -231,7 +231,7 @@ export default function ImportCalendarModal({
             </p>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground mb-2">
+              <p className="text-sm text-muted-foreground">
                 Match each session to a client to import
               </p>
               <div className="space-y-2 max-h-[60vh] overflow-y-auto overflow-x-visible">
@@ -259,7 +259,7 @@ export default function ImportCalendarModal({
                   const totalOptions = filteredClients.length + (showCreateOption ? 1 : 0)
 
                   return (
-                    <div key={event.uid} className="border rounded-lg p-3">
+                    <div key={event.uid} className="border rounded-lg p-2.5 hover:bg-muted/30 transition-colors">
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
@@ -270,26 +270,24 @@ export default function ImportCalendarModal({
                               ev.uid === event.uid ? { ...ev, selected: e.target.checked } : ev
                             ))
                           }}
-                          className="h-4 w-4 rounded border-input text-primary focus:ring-primary flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-4 w-4 rounded border-input text-primary focus:ring-primary flex-shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         />
-                        <div className="flex-1 min-w-0 flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-sm truncate">{event.title}</div>
-                            <div className="text-xs text-muted-foreground">
+                        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <div className="flex-1 min-w-[200px] flex items-baseline gap-2">
+                            <span className="font-medium truncate">{event.title}</span>
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">
                               {new Date(event.start).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
                                 hour: 'numeric',
                                 minute: '2-digit'
                               })}
-                            </div>
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">Match to:</span>
-                            <div className="relative w-40">
-                              <Input
+                          <div className="relative flex-grow basis-44 min-w-0">
+                            <Input
                                 id={inputId}
-                                placeholder="Search client..."
+                                placeholder="Match to client..."
                                 value={searchState.query}
                               onChange={(e) => {
                                 const query = e.target.value
@@ -343,22 +341,23 @@ export default function ImportCalendarModal({
                                   updateSearchState(event.uid, { showDropdown: false })
                                 }
                               }}
-                                className="h-8 text-sm"
+                                className="text-sm"
+                                autoComplete="off"
                               />
                               {searchState.showDropdown && (filteredClients.length > 0 || showCreateOption) && (
                                 <DropdownPositioner inputId={inputId} dropdownId={dropdownId}>
                                   <div 
                                     id={dropdownId}
-                                    className="fixed z-[60] bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto"
+                                    className="fixed z-[60] bg-card border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
                                   >
                                   {filteredClients.length > 0 && filteredClients.map((client, index) => (
                                     <button
                                       key={client.id}
                                       type="button"
-                                      className={`w-full px-3 py-2 text-left text-sm focus:outline-none border-b border-gray-100 ${
+                                      className={`w-full px-3 py-2 text-left text-sm focus:outline-none border-b border-border ${
                                         index === searchState.activeIndex
                                           ? 'bg-primary/10 text-primary'
-                                          : 'hover:bg-gray-100'
+                                          : 'hover:bg-muted'
                                       }`}
                                       onMouseEnter={() => {
                                         updateSearchState(event.uid, { activeIndex: index })
@@ -374,10 +373,10 @@ export default function ImportCalendarModal({
                                   {showCreateOption && (
                                     <button
                                       type="button"
-                                      className={`w-full px-3 py-2 text-left text-sm focus:outline-none border-t border-gray-200 ${
+                                      className={`w-full px-3 py-2 text-left text-sm focus:outline-none border-t border-border ${
                                         searchState.activeIndex === filteredClients.length
                                           ? 'bg-primary/10 text-primary'
-                                          : 'hover:bg-gray-100'
+                                          : 'hover:bg-muted'
                                       }`}
                                       onMouseEnter={() => {
                                         updateSearchState(event.uid, { activeIndex: filteredClients.length })
@@ -406,7 +405,6 @@ export default function ImportCalendarModal({
                                   </div>
                                 </DropdownPositioner>
                               )}
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -420,6 +418,7 @@ export default function ImportCalendarModal({
                   onClick={handleImport}
                   disabled={loading || importing || selectedCount === 0}
                   className="w-full"
+                  size="lg"
                 >
                   {importing ? 'Importing...' : `Import ${selectedCount} Session${selectedCount !== 1 ? 's' : ''}`}
                 </Button>
