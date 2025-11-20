@@ -33,11 +33,21 @@ serve(async (req) => {
     const note = await getNote(encryptedCalendarEntryId, encryptedPatientId, cookies)
 
     const elems = note?.Form?.Data?.FormElementValues || []
+    
+    // Extract diagnoses (FormElementId 13009)
     const dx = elems.find((el: any) => el.FormElementId === 13009)?.Value?.NoteDiagnoses || []
     const diagnoses = dx.map((d: any) => ({ code: d.Code, description: d.Description }))
+    
+    // Extract treatment objectives (FormElementId 13008)
     const objectives = elems.find((el: any) => el.FormElementId === 13008)?.Value?.ObjectivesProgress || []
+    
+    // Extract prescribed frequency (FormElementId 13013)
+    const frequencyData = elems.find((el: any) => el.FormElementId === 13013)?.Value
+    const prescribedFrequency = frequencyData?.Frequency && frequencyData.Frequency.trim() 
+      ? frequencyData.Frequency 
+      : 'Weekly'
 
-    return json({ success: true, diagnoses, objectives })
+    return json({ success: true, diagnoses, objectives, prescribedFrequency })
   } catch (error) {
     return json({ success: false, error: error instanceof Error ? error.message : 'Failed' }, 500)
   }

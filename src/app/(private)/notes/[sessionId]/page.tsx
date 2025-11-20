@@ -231,13 +231,16 @@ export default function SessionProgressNotePage() {
       const res = await fetch(`/api/therapynotes/get-note/${sessionId}`)
       if (!res.ok) return
       const { data } = await res.json()
+      
+      // Pull diagnosis
       const dx = data?.diagnoses || []
       if (dx.length > 0) {
-        setDiagnosisCode(prev => prev || dx[0].code || '')
-        setDiagnosisDescription(prev => prev || dx[0].description || '')
-        // Set additional diagnoses (skip first one since it goes in main fields)
+        setDiagnosisCode(dx[0].code || '')
+        setDiagnosisDescription(dx[0].description || '')
         setAdditionalDiagnoses(dx.slice(1))
       }
+      
+      // Pull treatment objectives
       type TNObjective = { Id: number; TreatmentObjectiveDescription: string }
       const rawObjectives: unknown[] = Array.isArray(data?.objectives) ? (data.objectives as unknown[]) : []
       const detailed: TNObjective[] = rawObjectives
@@ -250,6 +253,12 @@ export default function SessionProgressNotePage() {
         })
         .filter((o) => o.Id > 0 && o.TreatmentObjectiveDescription.trim())
       if (detailed.length > 0) setTreatmentObjectivesDetailed(detailed)
+      
+      // Pull prescribed frequency
+      if (data?.prescribedFrequency) {
+        setPrescribedFrequency(data.prescribedFrequency)
+      }
+      
       if (dx.length > 0 || detailed.length > 0) setTnPrefilled(true)
     } catch {
       // no-op
@@ -269,7 +278,7 @@ export default function SessionProgressNotePage() {
     fetch(`/api/notes/${sessionId}`)
       .then(res => res.json())
       .then(({ data }) => {
-        // If no saved content yet, auto-pull from TherapyNotes once
+        // If no saved content, pull from TherapyNotes and stop
         if (!data?.content) {
           if (!didAutoPullRef.current) {
             didAutoPullRef.current = true
@@ -278,6 +287,7 @@ export default function SessionProgressNotePage() {
           return
         }
         
+        // Saved content exists - load everything from Supabase
         const content = data.content as ProgressNoteContent
         
         // Load billing codes (legacy support for old format)
@@ -336,7 +346,7 @@ export default function SessionProgressNotePage() {
           setPlan(content.plan)
         }
         
-        // Load recommendation
+        // Load recommendation & frequency
         if (content.recommendation) {
           setRecommendation(content.recommendation.type)
           setPrescribedFrequency(content.recommendation.prescribedFrequency)

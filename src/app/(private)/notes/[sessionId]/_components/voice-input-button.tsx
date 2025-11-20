@@ -180,7 +180,11 @@ function useVoiceTranscription(id: string, onTranscript: (text: string, isFinal:
   }, [id])
 
   const toggleListening = useCallback(() => {
-    isListening ? manager.stop() : manager.start(id, onTranscript)
+    if (isListening) {
+      manager.stop()
+    } else {
+      manager.start(id, onTranscript)
+    }
   }, [id, isListening, onTranscript])
 
   return { isListening, isSupported, toggleListening }
