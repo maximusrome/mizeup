@@ -121,6 +121,16 @@ const formatTime = (time: string) => {
   return `${hour12}:${minutes} ${ampm}`
 }
 
+// Strip HTML tags, decode entities, and preserve line breaks
+const stripHtml = (html: string): string => {
+  if (!html) return ''
+  // Convert <br /> tags to newlines first
+  const withBreaks = html.replace(/<br\s*\/?>/gi, '\n')
+  const tmp = document.createElement('div')
+  tmp.innerHTML = withBreaks
+  return (tmp.innerText || tmp.textContent || '').trim()
+}
+
 // Components
 const RadioGroup = ({ name, options, value, onChange }: { name: string; options: string[]; value: string; onChange: (val: string) => void }) => (
   <div className="space-y-2">
@@ -191,9 +201,6 @@ export default function SessionProgressNotePage() {
   const [additionalDiagnoses, setAdditionalDiagnoses] = useState<{ code: string; description: string }[]>([])
   const didAutoPullRef = useRef(false)
 
-  const finalizedTextRef = useRef('')
-  const finalizedPlanRef = useRef('')
-
   const serviceCodes = useMemo(() => {
     const codes = ['90837']
     if (questions.some(q => q.code === '90785' && q.answer)) codes.push('+90785')
@@ -201,25 +208,23 @@ export default function SessionProgressNotePage() {
     return codes.join(' ')
   }, [questions])
 
-  const handleSubjectiveTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    if (isFinal) {
-      const newText = finalizedTextRef.current ? `${finalizedTextRef.current} ${transcript}` : transcript
-      finalizedTextRef.current = newText
-      setSubjectiveReport(newText)
-    } else {
-      setSubjectiveReport(finalizedTextRef.current ? `${finalizedTextRef.current} ${transcript}` : transcript)
-    }
-  }, [])
+  const subjectiveBaseRef = useRef('')
+  const planBaseRef = useRef('')
 
-  const handlePlanTranscript = useCallback((transcript: string, isFinal: boolean) => {
-    if (isFinal) {
-      const newText = finalizedPlanRef.current ? `${finalizedPlanRef.current} ${transcript}` : transcript
-      finalizedPlanRef.current = newText
-      setPlan(newText)
-    } else {
-      setPlan(finalizedPlanRef.current ? `${finalizedPlanRef.current} ${transcript}` : transcript)
+  const createTranscriptHandler = (baseRef: React.MutableRefObject<string>, setter: (value: string) => void) => 
+    (transcript: string, isFinal: boolean) => {
+      const newText = baseRef.current ? `${baseRef.current} ${transcript}` : transcript
+      if (isFinal) baseRef.current = newText
+      setter(newText)
     }
-  }, [])
+
+  const createTextChangeHandler = (baseRef: React.MutableRefObject<string>, setter: (value: string) => void) => 
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => setter(baseRef.current = e.target.value)
+
+  const handleSubjectiveTranscript = createTranscriptHandler(subjectiveBaseRef, setSubjectiveReport)
+  const handlePlanTranscript = createTranscriptHandler(planBaseRef, setPlan)
+  const handleSubjectiveChange = createTextChangeHandler(subjectiveBaseRef, setSubjectiveReport)
+  const handlePlanChange = createTextChangeHandler(planBaseRef, setPlan)
 
   const pullFromTherapyNotes = useCallback(async () => {
     try {
@@ -252,6 +257,10 @@ export default function SessionProgressNotePage() {
   }, [sessionId])
 
   useEffect(() => {
+    // Reset voice base refs on navigation
+    subjectiveBaseRef.current = ''
+    planBaseRef.current = ''
+    
     fetch(`/api/sessions/${sessionId}`)
       .then(res => res.json())
       .then(({ data }) => setSession(data))
@@ -315,7 +324,7 @@ export default function SessionProgressNotePage() {
         // Load clinical content
         if (content.medications) setMedications(content.medications)
         if (content.subjectiveReport) {
-          finalizedTextRef.current = content.subjectiveReport
+          subjectiveBaseRef.current = content.subjectiveReport
           setSubjectiveReport(content.subjectiveReport)
         }
         if (content.objectiveContent) setObjectiveContent(content.objectiveContent)
@@ -323,7 +332,7 @@ export default function SessionProgressNotePage() {
         if (content.treatmentProgress) setTreatmentProgress(content.treatmentProgress)
         if (content.assessment) setAssessment(content.assessment)
         if (content.plan) {
-          finalizedPlanRef.current = content.plan
+          planBaseRef.current = content.plan
           setPlan(content.plan)
         }
         
@@ -411,7 +420,7 @@ export default function SessionProgressNotePage() {
 
   const save = async () => {
     // Validation
-    if (!treatmentProgress) {
+    if (treatmentObjectivesDetailed.length > 0 && !treatmentProgress) {
       setValidationError('Please select Progress under Treatment Plan Progress.')
       return
     }
@@ -670,11 +679,11 @@ export default function SessionProgressNotePage() {
                     <Label className="text-base font-semibold">
                       Subjective Report and Symptom Description
                     </Label>
-                    <VoiceInputButton onTranscript={handleSubjectiveTranscript} />
+                    <VoiceInputButton id="subjective" onTranscript={handleSubjectiveTranscript} />
                   </div>
                   <Textarea
                     value={subjectiveReport}
-                    onChange={(e) => setSubjectiveReport(e.target.value)}
+                    onChange={handleSubjectiveChange}
                     placeholder="Subjective information discussed in session"
                     rows={4}
                     className="resize-none"
@@ -701,30 +710,28 @@ export default function SessionProgressNotePage() {
                 </div>
 
                 {/* Treatment Plan Progress */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Treatment Plan Progress</Label>
-                  <div className="bg-muted/50 p-4 rounded-lg border space-y-3">
-                    <div>
-                      <p className="text-sm font-semibold mb-2">Objectives</p>
-                      {treatmentObjectivesDetailed.length > 0 ? (
-                        <ul className="list-disc pl-5 space-y-1">
+                {treatmentObjectivesDetailed.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-base font-semibold">Treatment Plan Progress</Label>
+                    <div className="bg-muted/50 p-4 rounded-lg border space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold mb-2">Objectives</p>
+                        <ol className="list-decimal pl-5 space-y-1">
                           {treatmentObjectivesDetailed.map((obj, idx) => (
-                            <li key={`${idx}-${obj.TreatmentObjectiveDescription.substring(0, 12)}`} className="text-sm text-muted-foreground">{obj.TreatmentObjectiveDescription}</li>
+                            <li key={`${idx}-${obj.TreatmentObjectiveDescription.substring(0, 12)}`} className="text-sm text-muted-foreground whitespace-pre-line">{stripHtml(obj.TreatmentObjectiveDescription)}</li>
                           ))}
-                        </ul>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">No objectives available</p>
-                      )}
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                      <Label className="text-sm sm:whitespace-nowrap sm:min-w-[80px]">Progress: *</Label>
-                      <select value={treatmentProgress} onChange={(e) => setTreatmentProgress(e.target.value)} className="flex-1 lg:w-auto h-10 px-3 rounded-md border border-input bg-background text-sm">
-                        <option value="">Select progress...</option>
-                        {['Improved', 'Progressing', 'Maintained', 'No Progress', 'Regressed', 'Variable', 'Deferred', 'Not Addressed', 'On Hold', 'Completed'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                      </select>
+                        </ol>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <Label className="text-sm sm:whitespace-nowrap sm:min-w-[80px]">Progress: *</Label>
+                        <select value={treatmentProgress} onChange={(e) => setTreatmentProgress(e.target.value)} className="w-auto min-w-[200px] h-10 px-3 rounded-md border border-input bg-background text-sm">
+                          <option value="">Select progress...</option>
+                          {['Improved', 'Progressing', 'Maintained', 'No Progress', 'Regressed', 'Variable', 'Deferred', 'Not Addressed', 'On Hold', 'Completed'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Add-on Codes */}
                 <div className="space-y-4">
@@ -785,17 +792,23 @@ export default function SessionProgressNotePage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <Label className="text-base font-semibold">Plan *</Label>
                     <div className="flex gap-2">
-                      <VoiceInputButton onTranscript={handlePlanTranscript} />
+                      <VoiceInputButton id="plan" onTranscript={handlePlanTranscript} />
                       {session?.client_id && (
                         <PlanHistoryButton
                           clientId={session.client_id}
                           currentSessionId={sessionId as string}
-                          onSelect={setPlan}
+                          onSelect={(val) => { planBaseRef.current = val; setPlan(val) }}
                         />
                       )}
                     </div>
                   </div>
-                  <Textarea value={plan} onChange={(e) => setPlan(e.target.value)} placeholder="Next steps in the treatment process" rows={4} className="resize-none" />
+                  <Textarea 
+                    value={plan} 
+                    onChange={handlePlanChange}
+                    placeholder="Next steps in the treatment process" 
+                    rows={4} 
+                    className="resize-none" 
+                  />
                 </div>
 
                 {/* Recommendation */}
@@ -818,7 +831,8 @@ export default function SessionProgressNotePage() {
                             <select 
                               value={prescribedFrequency} 
                               onChange={(e) => setPrescribedFrequency(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="w-full h-10 px-3 rounded-md border border-input bg-transparent text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/30 focus-visible:ring-[2px]"
+                            // className="w-auto min-w-[200px] h-10 px-3 rounded-md border border-input bg-transparent text-sm shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/30 focus-visible:ring-[2px]"
                             >
                             <option value="As Needed">As Needed</option>
                             <option value="Twice a Week">Twice a Week</option>
