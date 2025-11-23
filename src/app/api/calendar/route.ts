@@ -10,7 +10,7 @@ async function parseIcalFeed(url: string) {
   
   const parsed = ical.parseICS(await response.text())
   const now = new Date()
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+  const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
   
   const events = []
   for (const item of Object.values(parsed)) {
@@ -18,8 +18,8 @@ async function parseIcalFeed(url: string) {
     if (event.type !== 'VEVENT' || !event.start || !event.end) continue
     
     const start = new Date(event.start)
-    // Only include past sessions (within last 2 weeks, but not future)
-    if (start < twoWeeksAgo || start > now) continue
+    // Only include events in the next week (from now to 7 days from now)
+    if (start < now || start > oneWeekFromNow) continue
     
     const formatDateForStorage = (date: Date) => {
       return date.toISOString()
