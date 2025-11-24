@@ -82,6 +82,7 @@ export default function ImportCalendarModal({
 
   useEffect(() => {
     if (isOpen) {
+      setImporting(false)
       loadEvents()
     }
   }, [isOpen])
@@ -94,14 +95,12 @@ export default function ImportCalendarModal({
       if (setupRequired) {
         setNeedsSetup(true)
       } else {
-        // Preserve selected state from API - auto-selected if exact nickname match exists
-        // Otherwise require manual matching
         setEvents(fetched || [])
         setClients(fetchedClients || [])
         
-        // Initialize search states with matched client names (only if exact nickname match exists)
+        // Initialize search states with matched client names
         const initialStates: Record<string, { query: string; showDropdown: boolean; activeIndex: number }> = {}
-        ;(fetched || []).forEach(e => {
+        fetched?.forEach(e => {
           if (e.matchedClientName) {
             initialStates[e.uid] = { query: e.matchedClientName, showDropdown: false, activeIndex: 0 }
           }
@@ -175,6 +174,7 @@ export default function ImportCalendarModal({
       })
 
       const imported = await importCalendarSessions(sessions)
+      
       onImport(imported)
       onClose()
     } catch {
@@ -226,9 +226,15 @@ export default function ImportCalendarModal({
               Loading events...
             </p>
           ) : events.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">
-              No new events to import.
-            </p>
+            <div className="py-8 text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 text-green-600 mb-3">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <p className="text-sm font-medium">All caught up!</p>
+              <p className="text-xs text-muted-foreground mt-1">No new sessions to import.</p>
+            </div>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
@@ -248,12 +254,9 @@ export default function ImportCalendarModal({
                   const inputId = `input-${event.uid}`
                   const dropdownId = `dropdown-${event.uid}`
                   
-                  // Determine if we should show "Create new" option
                   const trimmedInput = searchState.query.trim()
                   const trimmedInputLower = trimmedInput.toLowerCase()
-                  const hasExactMatch = clients.some(
-                    client => client.name.toLowerCase() === trimmedInputLower
-                  )
+                  const hasExactMatch = clients.some(c => c.name.toLowerCase() === trimmedInputLower)
                   const isCreating = creatingClientForEvent === event.uid
                   const showCreateOption = trimmedInput.length > 0 && !hasExactMatch && !isCreating
                   const totalOptions = filteredClients.length + (showCreateOption ? 1 : 0)
@@ -273,8 +276,8 @@ export default function ImportCalendarModal({
                           className="h-4 w-4 rounded border-input text-primary focus:ring-primary flex-shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         />
                         <div className="flex-1 min-w-0 flex flex-wrap items-center gap-x-4 gap-y-2">
-                          <div className="flex-1 min-w-[200px] flex items-baseline gap-2">
-                            <span className="font-medium truncate">{event.title}</span>
+                          <div className="flex-1 min-w-[250px] flex items-baseline gap-2">
+                            <span className="font-medium">{event.title}</span>
                             <span className="text-sm text-muted-foreground whitespace-nowrap">
                               {new Date(event.start).toLocaleDateString('en-US', {
                                 month: 'short',
@@ -284,7 +287,7 @@ export default function ImportCalendarModal({
                               })}
                             </span>
                           </div>
-                          <div className="relative flex-grow basis-44 min-w-0">
+                          <div className="relative w-64 flex-shrink-0">
                             <Input
                                 id={inputId}
                                 placeholder="Match to client..."

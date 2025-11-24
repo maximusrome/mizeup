@@ -2,39 +2,105 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const ical = require('ical')
+const IcalExpander = require('ical-expander')
+
+const DAYS_TO_IMPORT = 14
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+type ExpandedEvent = {
+  uid: string
+  title: string
+  start: string
+  end: string
+  sourceUid: string
+}
+
+type ICalComponent = {
+  getFirstPropertyValue?: (key: string) => string
+}
+
+type ICalEvent = {
+  uid: string
+  summary: string
+  component: ICalComponent
+  startDate: { toJSDate: () => Date }
+  endDate: { toJSDate: () => Date }
+}
+
+type ICalOccurrence = {
+  item: {
+    uid: string
+    summary: string
+    component: ICalComponent
+  }
+  startDate: { toJSDate: () => Date }
+  endDate: { toJSDate: () => Date }
+}
 
 async function parseIcalFeed(url: string) {
   const response = await fetch(url)
   if (!response.ok) throw new Error('Failed to fetch calendar')
   
-  const parsed = ical.parseICS(await response.text())
-  const now = new Date()
-  const oneWeekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+  const ics = await response.text()
+  const rangeEnd = new Date()
+  const rangeStart = new Date(rangeEnd.getTime() - DAYS_TO_IMPORT * MS_PER_DAY)
   
-  const events = []
-  for (const item of Object.values(parsed)) {
-    const event = item as { type?: string; start?: Date; end?: Date; uid?: string; summary?: string }
-    if (event.type !== 'VEVENT' || !event.start || !event.end) continue
-    
-    const start = new Date(event.start)
-    // Only include events in the next week (from now to 7 days from now)
-    if (start < now || start > oneWeekFromNow) continue
-    
-    const formatDateForStorage = (date: Date) => {
-      return date.toISOString()
-    }
-    
-    events.push({
-      uid: event.uid,
-      title: event.summary || 'Untitled',
-      start: formatDateForStorage(event.start),
-      end: formatDateForStorage(event.end)
+  const expander = new IcalExpander({
+    ics,
+    maxIterations: 1000
+  })
+  
+  const { events, occurrences } = expander.between(rangeStart, rangeEnd)
+  const dedupedEvents = new Map<string, ExpandedEvent>()
+
+  const toIso = (date: Date) => date.toISOString()
+
+  const addEvent = (uid: string, title: string, start: Date, end: Date) => {
+    const key = `${uid}-${toIso(start)}`
+    if (dedupedEvents.has(key)) return
+    dedupedEvents.set(key, {
+      uid: key,
+      sourceUid: uid,
+      title,
+      start: toIso(start),
+      end: toIso(end)
     })
   }
+
+  const isCancelled = (component?: { getFirstPropertyValue?: (key: string) => string }) =>
+    component?.getFirstPropertyValue?.('status') === 'CANCELLED'
   
-  return events.sort((a, b) => 
-    new Date(a.start).getTime() - new Date(b.start).getTime()
+  const isAllDay = (start: Date, end: Date) => {
+    const startOfDay = new Date(start).setHours(0, 0, 0, 0)
+    const endOfDay = new Date(end).setHours(0, 0, 0, 0)
+    return startOfDay === endOfDay && (end.getTime() - start.getTime()) % MS_PER_DAY === 0
+  }
+
+  events.forEach((event: ICalEvent) => {
+    if (isCancelled(event.component)) return
+    const hasRRule = Boolean(event.component.getFirstPropertyValue?.('rrule'))
+    if (hasRRule) return // Skip master events, occurrences will handle them
+    const startDate = event.startDate.toJSDate()
+    const endDate = event.endDate.toJSDate()
+    if (isAllDay(startDate, endDate)) return
+    addEvent(event.uid, event.summary || 'Untitled', startDate, endDate)
+  })
+
+  occurrences.forEach((occurrence: ICalOccurrence) => {
+    if (isCancelled(occurrence.item.component)) return
+    const startDate = occurrence.startDate.toJSDate()
+    const endDate = occurrence.endDate.toJSDate()
+    if (isAllDay(startDate, endDate)) return
+    addEvent(
+      occurrence.item.uid,
+      occurrence.item.summary || 'Untitled',
+      startDate,
+      endDate
+    )
+  })
+
+  return Array.from(dedupedEvents.values()).sort(
+    (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
   )
 }
 
@@ -45,10 +111,11 @@ function findMatchingClient(eventTitle: string, clients: Array<{ id: string; nam
   // Only exact matches - safe and predictable
   const normalized = eventTitle.trim().toLowerCase()
   
-  return clients.find(c => 
-    c.calendar_nickname?.toLowerCase() === normalized ||
-    c.name.toLowerCase() === normalized
-  ) || null
+  return clients.find(c => {
+    const nicknameMatch = c.calendar_nickname?.trim().toLowerCase() === normalized
+    const nameMatch = c.name.trim().toLowerCase() === normalized
+    return nicknameMatch || nameMatch
+  }) || null
 }
 
 export async function GET(req: NextRequest) {
@@ -86,31 +153,36 @@ export async function GET(req: NextRequest) {
 
     const { data: existingSessions } = await supabase
       .from('sessions')
-      .select('client_id, date, start_time')
+      .select('date, start_time')
       .eq('therapist_id', user.id)
 
-    const existingSet = new Set(
-      existingSessions?.map(s => `${s.client_id}|${s.date}|${s.start_time}`) || []
-    )
-    const existingTimesSet = new Set(
+    const existingTimes = new Set(
       existingSessions?.map(s => `${s.date}|${s.start_time}`) || []
     )
+
+    const formatDate = (isoString: string) => {
+      const d = new Date(isoString)
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      const hours = String(d.getHours()).padStart(2, '0')
+      const minutes = String(d.getMinutes()).padStart(2, '0')
+      return {
+        date: `${year}-${month}-${day}`,
+        time: `${hours}:${minutes}:00`
+      }
+    }
 
     const eventsWithMatches = events
       .map(event => {
         const match = findMatchingClient(event.title, clients || [])
-        const eventDate = new Date(event.start)
-        const date = `${eventDate.getFullYear()}-${String(eventDate.getMonth() + 1).padStart(2, '0')}-${String(eventDate.getDate()).padStart(2, '0')}`
-        const time = `${String(eventDate.getHours()).padStart(2, '0')}:${String(eventDate.getMinutes()).padStart(2, '0')}:00`
+        const { date, time } = formatDate(event.start)
         
-        if (match && existingSet.has(`${match.id}|${date}|${time}`)) return null
-        if (existingTimesSet.has(`${date}|${time}`)) return null
+        if (existingTimes.has(`${date}|${time}`)) return null
         
-        // Auto-select if there's an exact nickname match (previously matched)
-        // Otherwise require manual matching
         return {
           ...event,
-          selected: !!match, // Auto-select if there's a match
+          selected: !!match,
           matchedClientId: match?.id,
           matchedClientName: match?.name
         }
