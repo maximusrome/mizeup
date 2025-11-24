@@ -199,12 +199,14 @@ export default function CalendarPage() {
   }
 
   const handleSyncProgressNotes = async () => {
-    // Global: sync ALL unsynced notes
-    const unsyncedNotes = sessions.filter(s => 
-      s.has_progress_note && 
-      !s.progress_note_synced &&
-      s.synced_to_therapynotes
-    )
+    // Global: sync ALL unsynced notes (only for sessions that have ended)
+    const unsyncedNotes = sessions.filter(s => {
+      const sessionEnd = new Date(`${s.date}T${s.end_time}`)
+      return sessionEnd < new Date() &&
+        s.has_progress_note && 
+        !s.progress_note_synced &&
+        s.synced_to_therapynotes
+    })
 
     const totalNotes = unsyncedNotes.length
     if (!totalNotes) return
@@ -294,11 +296,13 @@ export default function CalendarPage() {
     return sessionEnd < new Date() && !s.synced_to_therapynotes
   }).length
 
-  const unsyncedNotesCount = sessions.filter(s => 
-    s.synced_to_therapynotes && 
-    s.has_progress_note && 
-    !s.progress_note_synced
-  ).length
+  const unsyncedNotesCount = sessions.filter(s => {
+    const sessionEnd = new Date(`${s.date}T${s.end_time}`)
+    return sessionEnd < new Date() &&
+      s.synced_to_therapynotes && 
+      s.has_progress_note && 
+      !s.progress_note_synced
+  }).length
 
   // Button labels based on state
   const sessionsLabel = pastUnsyncedCount > 0 
@@ -317,10 +321,11 @@ export default function CalendarPage() {
               <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
               <div className="flex items-center gap-2 flex-wrap">
                 <Button
-                  variant="default"
+                  variant="secondary"
                   size="sm"
                   onClick={() => setIsImportModalOpen(true)}
-                  className="h-8 px-2 sm:px-3 text-xs whitespace-nowrap"
+                  className="h-8 px-2 sm:px-3 text-xs whitespace-nowrap text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110"
+                  style={{ backgroundImage: 'none' }}
                 >
                   Import Sessions
                 </Button>
