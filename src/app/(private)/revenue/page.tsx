@@ -9,7 +9,8 @@ import type { ProgressNote } from '@/types'
 // Add-on code pricing
 const ADD_ON_PRICING: Record<string, number> = {
   '90785': 12.96, // Interactive Complexity
-  '99050': 16.58  // After Hours
+  '99050': 16.58, // After Hours
+  '90840': 63.21  // Crisis Psychotherapy Extended
 }
 
 interface RevenueData {
@@ -21,8 +22,10 @@ interface RevenueData {
   monthlyRevenue: { month: string; revenue: number }[]
   codeUsageCounts: {
     '90837': number  // Psychotherapy 60 minutes
+    '90839': number  // Crisis Psychotherapy
     '90785': number  // Interactive Complexity
     '99050': number  // After Hours
+    '90840': number  // Crisis Psychotherapy Extended
   }
 }
 
@@ -307,7 +310,7 @@ export default function RevenuePage() {
         // Calculate total revenue and build daily map
         let totalRevenueEarned = 0
         const dailyRevenueMap = new Map<string, number>()
-        const codeUsageCounts = { '90837': 0, '90785': 0, '99050': 0 }
+        const codeUsageCounts = { '90837': 0, '90839': 0, '90785': 0, '99050': 0, '90840': 0 }
         
         syncedNotes.forEach((note) => {
           // Handle both array and object format from Supabase join
@@ -317,10 +320,17 @@ export default function RevenuePage() {
             return
           }
           
-          // Count regular session code (every synced note has this)
-          codeUsageCounts['90837']++
-          
           const billingCodes = note.content?.billingCodes || []
+          
+          // Check if this is a crisis session (90839) or regular session (90837)
+          const isCrisis = billingCodes.some(bc => bc.code === '90839')
+          if (isCrisis) {
+            codeUsageCounts['90839']++
+          } else {
+            // Count regular session code (every synced note has this)
+            codeUsageCounts['90837']++
+          }
+          
           let noteRevenue = 0
           
           billingCodes.forEach(bc => {
@@ -330,6 +340,9 @@ export default function RevenuePage() {
             } else if (bc.code === '99050') {
               noteRevenue += ADD_ON_PRICING['99050']
               codeUsageCounts['99050']++
+            } else if (bc.code === '90840') {
+              noteRevenue += ADD_ON_PRICING['90840']
+              codeUsageCounts['90840']++
             }
           })
           
@@ -462,7 +475,7 @@ export default function RevenuePage() {
             dailyRevenue: [],
             weeklyRevenue: [],
             monthlyRevenue: [],
-            codeUsageCounts: { '90837': syncedNotes.length, '90785': 0, '99050': 0 }
+            codeUsageCounts: { '90837': syncedNotes.length, '90839': 0, '90785': 0, '99050': 0, '90840': 0 }
           })
         }
       } catch (error) {
@@ -495,7 +508,7 @@ export default function RevenuePage() {
     dailyRevenue: data?.dailyRevenue ?? [],
     weeklyRevenue: data?.weeklyRevenue ?? [],
     monthlyRevenue: data?.monthlyRevenue ?? [],
-    codeUsageCounts: data?.codeUsageCounts ?? { '90837': 0, '90785': 0, '99050': 0 }
+    codeUsageCounts: data?.codeUsageCounts ?? { '90837': 0, '90839': 0, '90785': 0, '99050': 0, '90840': 0 }
   }
 
   const getPeriodData = () => {
@@ -561,18 +574,24 @@ export default function RevenuePage() {
           </div>
 
           {/* Code Usage */}
-          {revenueData.codeUsageCounts['90837'] > 0 && (
+          {(revenueData.codeUsageCounts['90837'] > 0 || revenueData.codeUsageCounts['90839'] > 0) && (
             <Card>
               <CardHeader>
                 <CardTitle>Code Usage</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                   <div className="border rounded-lg p-4">
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Psychotherapy 60 minutes (90837)
-                  </div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Psychotherapy 60 minutes (90837)
+                    </div>
                     <div className="text-3xl font-bold">{revenueData.codeUsageCounts['90837']}</div>
+                  </div>
+                  <div className="border rounded-lg p-4">
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Crisis Psychotherapy (90839)
+                    </div>
+                    <div className="text-3xl font-bold">{revenueData.codeUsageCounts['90839']}</div>
                   </div>
                   <div className="border rounded-lg p-4">
                     <div className="text-sm font-medium text-muted-foreground mb-1">
@@ -585,6 +604,12 @@ export default function RevenuePage() {
                       After Hours (+99050)
                     </div>
                     <div className="text-3xl font-bold">{revenueData.codeUsageCounts['99050']}</div>
+                  </div>
+                  <div className="border rounded-lg p-4">
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Crisis Extended (+90840)
+                    </div>
+                    <div className="text-3xl font-bold">{revenueData.codeUsageCounts['90840']}</div>
                   </div>
                 </div>
               </CardContent>
