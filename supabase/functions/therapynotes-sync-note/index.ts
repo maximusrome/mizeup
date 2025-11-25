@@ -64,15 +64,19 @@ function toStringArray(list: unknown): string[] {
 // Build service codes array with add-on codes if applicable
 const buildServiceCodes = (billingCodes: any[]): any[] => {
   const codes = [
-    { Id: 4217196, Code: "90837", Units: 1, IsAddOn: false } // Main service code
+    billingCodes?.some((bc: any) => bc.code === "90839")
+      ? { Id: 4301237, Code: "90839", Units: 1, IsAddOn: false }
+      : { Id: 4217196, Code: "90837", Units: 1, IsAddOn: false }
   ]
   
   if (billingCodes?.some((bc: any) => bc.code === "90785")) {
     codes.push({ Id: 4105110, Code: "90785", Units: 1, IsAddOn: true })
   }
-  
   if (billingCodes?.some((bc: any) => bc.code === "99050")) {
     codes.push({ Id: 4183917, Code: "99050", Units: 1, IsAddOn: true })
+  }
+  if (billingCodes?.some((bc: any) => bc.code === "90840")) {
+    codes.push({ Id: 4301246, Code: "90840", Units: 1, IsAddOn: true })
   }
   
   return codes
@@ -325,7 +329,7 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
         SupervisorId: null,
         SupervisorDisplayName: "",
         SupervisorRole: 0,
-        SessionDuration: 60,
+        SessionDuration: content.billingCodes?.some((bc: any) => bc.code === "90840") && content.crisisSessionDuration ? content.crisisSessionDuration : 60,
         LocationType: 1,
         LocationId: LOCATION_ID,
         ParticipantsType: 1,

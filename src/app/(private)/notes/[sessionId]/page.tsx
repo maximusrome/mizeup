@@ -109,7 +109,9 @@ const QUESTIONS = [
   { id: 'q2', text: 'Did the caregiver\'s emotions/behavior interfere with implementation of the treatment plan?', answer: false, code: '90785', note: 'Caregiver emotions and behaviors, such as agitation or disagreement with the plan, interfered with treatment implementation by disrupting focus. Interventions included addressing concerns, mediating dynamics, and refocusing on goals to enable effective care.' },
   { id: 'q3', text: 'Was there evidence/disclosure of a sentinel event and mandated report to a third party (e.g., abuse or neglect with report to state agency) with initiation of discussion of the sentinel event and/or report with patient and other visit participants?', answer: false, code: '90785', note: 'Evidence or disclosure of a sentinel event, such as abuse or neglect, required a mandated report to a third party like a state agency. Discussion of the event and report process involved the patient and participants. This complicated care delivery by shifting focus to crisis response. Interventions included explaining obligations, providing support, and integrating into the plan.' },
   { id: 'q4', text: 'Did you use play equipment, physical devices, interpreter, or translator to overcome significant language barriers?', answer: false, code: '90785', note: 'Used play equipment, physical devices, interpreter, or translator to overcome significant language or communication barriers due to the patient\'s limited skills. This complicated care delivery by requiring adapted interaction methods. Interventions included employing these tools to ensure engagement and comprehension.' },
-  { id: 'q5', text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?', answer: false, code: '99050', note: 'This session was provided in the office outside the practice\'s regularly scheduled office hours of Monday-Friday 9:00 AM-5:00 PM, thereby meeting criteria for add-on code 99050.' }
+  { id: 'q5', text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?', answer: false, code: '99050', note: 'This session was provided in the office outside the practice\'s regularly scheduled office hours of Monday-Friday 9:00 AM-5:00 PM, thereby meeting criteria for add-on code 99050.' },
+  { id: 'q6', text: 'Was the presenting problem typically life-threatening or complex and require immediate attention to a patient in high distress?', answer: false, code: '90839', note: 'This session addressed a presenting problem that was life-threatening or complex, requiring immediate attention to a patient in high distress. Crisis intervention techniques were employed to stabilize the patient and ensure safety.' },
+  { id: 'q7', text: 'Was the face-to-face crisis psychotherapy total time greater than 75 minutes?', answer: false, code: '90840', note: 'The face-to-face crisis psychotherapy session exceeded 75 minutes in duration, requiring extended time to adequately address the crisis situation and ensure patient stabilization.' }
 ]
 
 // Helper functions
@@ -199,12 +201,16 @@ export default function SessionProgressNotePage() {
   const [tnPrefilled, setTnPrefilled] = useState(false)
   const [treatmentObjectivesDetailed, setTreatmentObjectivesDetailed] = useState<{ Id: number; TreatmentObjectiveDescription: string }[]>([])
   const [additionalDiagnoses, setAdditionalDiagnoses] = useState<{ code: string; description: string }[]>([])
+  const [crisisSessionDuration, setCrisisSessionDuration] = useState<number>(75)
   const didAutoPullRef = useRef(false)
 
   const serviceCodes = useMemo(() => {
-    const codes = ['90837']
+    // Check if crisis psychotherapy is used
+    const isCrisis = questions.some(q => q.code === '90839' && q.answer)
+    const codes = [isCrisis ? '90839' : '90837']
     if (questions.some(q => q.code === '90785' && q.answer)) codes.push('+90785')
     if (questions.some(q => q.code === '99050' && q.answer)) codes.push('+99050')
+    if (questions.some(q => q.code === '90840' && q.answer)) codes.push('+90840')
     return codes.join(' ')
   }, [questions])
 
@@ -294,6 +300,11 @@ export default function SessionProgressNotePage() {
         if (content.billingCodes) {
           const codes = content.billingCodes.map((c: { text: string }) => c.text)
           setQuestions(prev => prev.map(q => ({ ...q, answer: codes.includes(q.note) })))
+        }
+        
+        // Load crisis session duration
+        if (content.crisisSessionDuration) {
+          setCrisisSessionDuration(content.crisisSessionDuration)
         }
         
         // Load diagnosis
@@ -476,7 +487,8 @@ export default function SessionProgressNotePage() {
       treatmentProgress: treatmentProgress || undefined,
       assessment: assessment || undefined,
       plan: plan || undefined,
-      recommendation: { type: recommendation, prescribedFrequency }
+      recommendation: { type: recommendation, prescribedFrequency },
+      crisisSessionDuration: selectedBillingCodes.some(q => q.code === '90840') ? crisisSessionDuration : undefined
     }
     
     await fetch(`/api/notes/${sessionId}`, {
@@ -785,6 +797,61 @@ export default function SessionProgressNotePage() {
                             {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
                           </div>
                           <span className="text-sm flex-1">{q.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Crisis Psychotherapy */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
+                      <span className="font-medium text-sm">Crisis Psychotherapy 90839</span>
+                      <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
+                        $127.62
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {questions.filter(q => q.code === '90839').map(q => (
+                        <div key={q.id} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
+                          <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                            {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                          </div>
+                          <span className="text-sm flex-1">{q.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Crisis Psychotherapy Add-on */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
+                      <span className="font-medium text-sm">Crisis Psychotherapy Extended +90840</span>
+                      <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
+                        +$63.21
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {questions.filter(q => q.code === '90840').map(q => (
+                        <div key={q.id}>
+                          <div className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
+                            <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                              {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                            </div>
+                            <span className="text-sm flex-1">{q.text}</span>
+                          </div>
+                          {q.answer && (
+                            <div className="ml-7 mt-2 flex items-center gap-2">
+                              <Label className="text-sm">Session duration (minutes):</Label>
+                              <Input
+                                type="number"
+                                min="76"
+                                value={crisisSessionDuration}
+                                onChange={(e) => setCrisisSessionDuration(parseInt(e.target.value) || 75)}
+                                className="w-20"
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>

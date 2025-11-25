@@ -92,6 +92,8 @@ export interface ProgressNoteContent {
     type: string
     prescribedFrequency: string
   }
+  // Crisis session duration (for 90840 add-on code)
+  crisisSessionDuration?: number
 }
 
 export interface ProgressNote {
