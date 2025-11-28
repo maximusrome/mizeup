@@ -128,6 +128,7 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const settingsOnly = searchParams.get('settings') === 'true'
+    const tzOffset = parseInt(searchParams.get('tz') || '0', 10)
 
     const { data: therapist } = await supabase
       .from('therapists')
@@ -161,12 +162,12 @@ export async function GET(req: NextRequest) {
     )
 
     const formatDate = (isoString: string) => {
-      const d = new Date(isoString)
-      const year = d.getFullYear()
-      const month = String(d.getMonth() + 1).padStart(2, '0')
-      const day = String(d.getDate()).padStart(2, '0')
-      const hours = String(d.getHours()).padStart(2, '0')
-      const minutes = String(d.getMinutes()).padStart(2, '0')
+      const d = new Date(new Date(isoString).getTime() - tzOffset * 60000)
+      const year = d.getUTCFullYear()
+      const month = String(d.getUTCMonth() + 1).padStart(2, '0')
+      const day = String(d.getUTCDate()).padStart(2, '0')
+      const hours = String(d.getUTCHours()).padStart(2, '0')
+      const minutes = String(d.getUTCMinutes()).padStart(2, '0')
       return {
         date: `${year}-${month}-${day}`,
         time: `${hours}:${minutes}:00`

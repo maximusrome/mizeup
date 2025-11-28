@@ -184,7 +184,8 @@ export async function fetchCalendarEvents(): Promise<{
   clients: Client[]
   needsSetup: boolean
 }> {
-  const response = await fetch('/api/calendar')
+  const tz = new Date().getTimezoneOffset()
+  const response = await fetch(`/api/calendar?tz=${tz}`)
   const result = await response.json()
   
   if (!response.ok) {
