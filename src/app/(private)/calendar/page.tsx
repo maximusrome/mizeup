@@ -162,8 +162,8 @@ export default function CalendarPage() {
     const synced = session.has_progress_note && session.progress_note_synced
     // Use secondary (purple) for synced notes, primary (cyan) for others
     return synced 
-      ? 'bg-[var(--secondary)]/25 hover:bg-[var(--secondary)]/35' 
-      : 'bg-[var(--primary)]/20 hover:bg-[var(--primary)]/30'
+      ? 'bg-[var(--secondary)]/70 hover:bg-[var(--secondary)]/80' 
+      : 'bg-[var(--primary)]/40 hover:bg-[var(--primary)]/50'
   }
 
   // Handlers
@@ -331,11 +331,9 @@ export default function CalendarPage() {
       onDragStart={(e) => handleDragStart(e, session)}
       onDragEnd={handleDragEnd}
       onClick={(e) => { e.stopPropagation(); handleEditSession(session) }}
-      className="absolute rounded-md text-xs cursor-grab active:cursor-grabbing overflow-hidden"
+      className={`absolute rounded-md text-xs cursor-grab active:cursor-grabbing overflow-hidden ${getSessionStyle(session)}`}
       style={{ left: 2, right: 2, top: position.top + 2, height: Math.max(position.height - 4, 20), minHeight: 20, zIndex: 1 }}
     >
-      <div className="absolute inset-0 rounded-md bg-background" />
-      <div className={`absolute inset-0 rounded-md ${getSessionStyle(session)}`} />
       <div className="relative p-1.5">
         <div className="flex items-center justify-between gap-1 mb-0.5">
           <div className="font-medium text-xs">{formatTime(session.start_time)}</div>
@@ -399,16 +397,16 @@ export default function CalendarPage() {
         <div className="py-4 sm:py-6">
           {/* Header */}
           <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
-            <div className="flex items-center flex-wrap gap-2 sm:gap-3">
+            <div className="flex items-center flex-wrap gap-1.5 sm:gap-2">
               <Button variant="outline" size="sm" onClick={() => setOffset(0)} className="h-8 px-2 sm:px-3 text-xs">Today</Button>
-              <div className="flex items-center gap-0.5 sm:gap-1">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setOffset(o => o - 1)} className="h-8 w-8 p-0" aria-label="Previous">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => setOffset(o => o + 1)} className="h-8 w-8 p-0" aria-label="Next">
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Button>
-                <h2 className="text-lg sm:text-2xl font-semibold text-foreground whitespace-nowrap ml-0.5 sm:ml-1">{displayTitle}</h2>
+                <h2 className="text-lg sm:text-2xl font-semibold text-foreground whitespace-nowrap">{displayTitle}</h2>
               </div>
               <div className="inline-flex items-center rounded-lg bg-muted/60 p-1">
                 {(['day', 'week', 'month'] as const).map(v => (
@@ -505,10 +503,8 @@ export default function CalendarPage() {
                               <div 
                                 key={s.id} 
                                 onClick={(e) => { e.stopPropagation(); handleEditSession(s) }}
-                                className="text-xs rounded-md cursor-pointer overflow-hidden relative"
+                                className={`text-xs rounded-md cursor-pointer overflow-hidden relative ${getSessionStyle(s)}`}
                               >
-                                <div className="absolute inset-0 rounded-md bg-background" />
-                                <div className={`absolute inset-0 rounded-md ${getSessionStyle(s)}`} />
                                 <div className="relative p-1.5">
                                   <div className="flex items-center justify-between gap-1">
                                     <span className="font-medium truncate">{formatTime(s.start_time)}</span>
