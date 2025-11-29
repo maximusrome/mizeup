@@ -331,14 +331,18 @@ export default function CalendarPage() {
       onDragStart={(e) => handleDragStart(e, session)}
       onDragEnd={handleDragEnd}
       onClick={(e) => { e.stopPropagation(); handleEditSession(session) }}
-      className={`absolute p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing overflow-hidden transition-colors ${getSessionStyle(session)}`}
+      className="absolute rounded-md text-xs cursor-grab active:cursor-grabbing overflow-hidden"
       style={{ left: 2, right: 2, top: position.top + 2, height: Math.max(position.height - 4, 20), minHeight: 20, zIndex: 1 }}
     >
-      <div className="flex items-center justify-between gap-1 mb-0.5">
-        <div className="font-medium text-xs">{formatTime(session.start_time)}</div>
-        <SessionIcons session={session} />
+      <div className="absolute inset-0 rounded-md bg-background" />
+      <div className={`absolute inset-0 rounded-md ${getSessionStyle(session)}`} />
+      <div className="relative p-1.5">
+        <div className="flex items-center justify-between gap-1 mb-0.5">
+          <div className="font-medium text-xs">{formatTime(session.start_time)}</div>
+          <SessionIcons session={session} />
+        </div>
+        <div className="text-xs text-muted-foreground truncate">{session.clients?.name || 'Unknown Client'}</div>
       </div>
-      <div className="text-xs text-muted-foreground truncate">{session.clients?.name || 'Unknown Client'}</div>
     </div>
   )
 
@@ -501,13 +505,17 @@ export default function CalendarPage() {
                               <div 
                                 key={s.id} 
                                 onClick={(e) => { e.stopPropagation(); handleEditSession(s) }}
-                                className={`text-xs p-1.5 rounded-md cursor-pointer overflow-hidden transition-colors ${getSessionStyle(s)}`}
+                                className="text-xs rounded-md cursor-pointer overflow-hidden relative"
                               >
-                                <div className="flex items-center justify-between gap-1">
-                                  <span className="font-medium truncate">{formatTime(s.start_time)}</span>
-                                  <SessionIcons session={s} />
+                                <div className="absolute inset-0 rounded-md bg-background" />
+                                <div className={`absolute inset-0 rounded-md ${getSessionStyle(s)}`} />
+                                <div className="relative p-1.5">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-medium truncate">{formatTime(s.start_time)}</span>
+                                    <SessionIcons session={s} />
+                                  </div>
+                                  <div className="truncate text-muted-foreground text-xs">{s.clients?.name || 'Unknown Client'}</div>
                                 </div>
-                                <div className="truncate text-muted-foreground text-xs">{s.clients?.name || 'Unknown Client'}</div>
                               </div>
                             ))}
                             {daySessions.length > 4 && <div className="text-xs text-muted-foreground pt-0.5">+{daySessions.length - 4} more</div>}
