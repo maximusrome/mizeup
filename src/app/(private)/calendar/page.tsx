@@ -1,101 +1,177 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import SessionModal from './_components/session-modal'
-import SessionCard from './_components/session-card'
 import ImportCalendarModal from './_components/import-calendar-modal'
 import { getSessions } from '@/lib/api'
 import type { Session } from '@/types'
 
+// Helpers
+const formatTime = (timeString: string) => {
+  const [hours, minutes] = timeString.split(':').map(Number)
+  const d = new Date()
+  d.setHours(hours, minutes, 0, 0)
+  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    .format(d).replace(':00', '').toLowerCase()
+}
+
+const getLocalDateString = (date: Date) => {
+  const y = date.getFullYear()
+  const m = (date.getMonth() + 1).toString().padStart(2, '0')
+  const d = date.getDate().toString().padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const parseLocalDateString = (dateString: string) => {
+  const [y, m, d] = dateString.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+const sortSessions = (list: Session[]) =>
+  [...list].sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+
+const padTime = (n: number) => n.toString().padStart(2, '0')
+
+const timeSlots = Array.from({ length: 16 }, (_, i) => {
+  const hour = 8 + i
+  return { hour, label: formatTime(`${padTime(hour)}:00`), timeString: `${padTime(hour)}:00` }
+})
+
 export default function CalendarPage() {
+  const router = useRouter()
   const [sessions, setSessions] = useState<Session[]>([])
-  const [selectedDate, setSelectedDate] = useState<string>('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSession, setEditingSession] = useState<Session | null>(null)
-  const [currentWeekOffset, setCurrentWeekOffset] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSyncing, setIsSyncing] = useState(false)
-  const [syncStatus, setSyncStatus] = useState<string | null>(null)
+  const [offset, setOffset] = useState(0)
+  const [view, setView] = useState<'day' | 'week' | 'month'>('week')
   const [syncTarget, setSyncTarget] = useState<'sessions' | 'notes' | null>(null)
-  const [isSyncingNotes, setIsSyncingNotes] = useState(false)
+  const [syncStatus, setSyncStatus] = useState<string | null>(null)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
-  const todayCardRef = useRef<HTMLDivElement>(null)
+  const [draggedSession, setDraggedSession] = useState<Session | null>(null)
+  const dragOffsetRef = useRef({ y: 0, startMinutes: 0 })
 
-  // Local date helpers to avoid UTC shifting issues
-  const getLocalDateString = (date: Date) => {
-    const y = date.getFullYear()
-    const m = (date.getMonth() + 1).toString().padStart(2, '0')
-    const d = date.getDate().toString().padStart(2, '0')
-    return `${y}-${m}-${d}`
-  }
+  const todayLocal = useMemo(() => getLocalDateString(new Date()), [])
 
-  const parseLocalDateString = (dateString: string) => {
-    const [y, m, d] = dateString.split('-').map(Number)
-    return new Date(y, m - 1, d)
-  }
-
-  // Get week dates starting from Monday of current week
-  const getWeekDates = () => {
+  // Date calculations
+  const weekDates = useMemo(() => {
+    if (view !== 'week') return []
     const today = new Date()
-    const todayLocal = getLocalDateString(today)
+    const sunday = new Date(today)
+    sunday.setDate(today.getDate() - today.getDay() + offset * 7)
     
-    // Calculate Monday of the current week
-    const dayOfWeek = today.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1 // Sunday = 6 days back, Monday = 0
-    
-    const monday = new Date(today)
-    monday.setDate(today.getDate() - daysFromMonday)
-    
-    // Apply week offset (for navigation)
-    const startOfWeek = new Date(monday)
-    startOfWeek.setDate(monday.getDate() + (currentWeekOffset * 7))
-
-    const weekDates = []
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek)
-      date.setDate(startOfWeek.getDate() + i)
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = new Date(sunday)
+      date.setDate(sunday.getDate() + i)
       const dateString = getLocalDateString(date)
-      weekDates.push({
+      return {
         date: dateString,
-        dayName: date.toLocaleDateString('en-US', { weekday: 'long' }),
-        isPast: dateString < todayLocal,
+        dayName: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        dayNumber: date.getDate(),
+        isToday: dateString === todayLocal
+      }
+    })
+  }, [view, offset, todayLocal])
+
+  const dayDate = useMemo(() => {
+    if (view !== 'day') return null
+    const targetDate = new Date()
+    targetDate.setDate(targetDate.getDate() + offset)
+    const dateString = getLocalDateString(targetDate)
+    return {
+      date: dateString,
+      dayName: targetDate.toLocaleDateString('en-US', { weekday: 'short' }),
+      dayNumber: targetDate.getDate(),
+      month: targetDate.toLocaleDateString('en-US', { month: 'long' }),
+      year: targetDate.getFullYear(),
+      isToday: dateString === todayLocal
+    }
+  }, [view, offset, todayLocal])
+
+  const monthData = useMemo(() => {
+    if (view !== 'month') return null
+    const today = new Date()
+    const targetDate = new Date(today.getFullYear(), today.getMonth() + offset, 1)
+    const year = targetDate.getFullYear()
+    const month = targetDate.getMonth()
+    
+    const startDate = new Date(year, month, 1)
+    startDate.setDate(1 - startDate.getDay())
+    
+    const endDate = new Date(year, month + 1, 0)
+    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()))
+    
+    const dates = []
+    const current = new Date(startDate)
+    while (current <= endDate) {
+      const dateString = getLocalDateString(current)
+      dates.push({
+        date: dateString,
+        dayNumber: current.getDate(),
+        isCurrentMonth: current.getMonth() === month,
         isToday: dateString === todayLocal
       })
+      current.setDate(current.getDate() + 1)
     }
-    return weekDates
-  }
+    
+    return { dates, month: targetDate.toLocaleDateString('en-US', { month: 'long' }), year }
+  }, [view, offset, todayLocal])
 
-  const weekDates = getWeekDates()
-
-  // Load sessions from database
+  // Load sessions
   const loadSessions = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      const sessionsData = await getSessions()
-      setSessions(sortSessions(sessionsData))
-    } finally {
-      setIsLoading(false)
-    }
+    const data = await getSessions()
+    setSessions(sortSessions(data))
   }, [])
 
-  useEffect(() => {
-    loadSessions()
-  }, [loadSessions])
+  useEffect(() => { loadSessions() }, [loadSessions])
 
-  const formatDate = (dateString: string) => {
-    const date = parseLocalDateString(dateString)
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-    })
+  // Global dragover handler
+  useEffect(() => {
+    if (!draggedSession) return
+    const handler = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+    }
+    document.addEventListener('dragover', handler)
+    return () => document.removeEventListener('dragover', handler)
+  }, [draggedSession])
+
+  // Session helpers
+  const getSessionsForSlot = (dateString: string, hour: number) =>
+    sessions.filter(s => s.date === dateString && parseInt(s.start_time.split(':')[0]) === hour)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+  const getSessionPosition = (session: Session) => {
+    const [sh, sm] = session.start_time.split(':').map(Number)
+    const [eh, em] = session.end_time.split(':').map(Number)
+    return { top: sm, height: Math.max((eh * 60 + em) - (sh * 60 + sm), 20) }
   }
 
-  const handleDayClick = (date: string) => {
+  const getCurrentTimePosition = (dateString: string) => {
+    if (dateString !== todayLocal) return null
+    const now = new Date()
+    const h = now.getHours(), m = now.getMinutes()
+    if (h < 8 || h > 23) return null
+    return Math.min((h - 8) * 60 + m, 960)
+  }
+
+  const getSessionStyle = (session: Session) => {
+    const synced = session.has_progress_note && session.progress_note_synced
+    // Use secondary (purple) for synced notes, primary (cyan) for others
+    return synced 
+      ? 'bg-[var(--secondary)]/25 hover:bg-[var(--secondary)]/35' 
+      : 'bg-[var(--primary)]/20 hover:bg-[var(--primary)]/30'
+  }
+
+  // Handlers
+  const openModal = (date: string, time = '') => {
     setSelectedDate(date)
-    setIsModalOpen(true)
+    setSelectedTime(time)
     setEditingSession(null)
+    setIsModalOpen(true)
   }
 
   const handleEditSession = (session: Session) => {
@@ -104,405 +180,360 @@ export default function CalendarPage() {
     setIsModalOpen(true)
   }
 
-  // Ensure sessions are always ordered by date then start time
-  const sortSessions = (list: Session[]) =>
-    [...list].sort((a, b) => a.date.localeCompare(b.date) || a.start_time.localeCompare(b.start_time))
+  const handleDragStart = (e: React.DragEvent, session: Session) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const [h, m] = session.start_time.split(':').map(Number)
+    dragOffsetRef.current = { y: e.clientY - rect.top, startMinutes: h * 60 + m }
+    setDraggedSession(session)
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', session.id)
+    ;(e.currentTarget as HTMLElement).style.opacity = '0.5'
+  }
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setDraggedSession(null)
+    ;(e.currentTarget as HTMLElement).style.opacity = '1'
+  }
+
+  const handleDrop = async (e: React.DragEvent, targetDate: string, slotHour: number) => {
+    e.preventDefault()
+    const session = draggedSession
+    if (!session) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const rawMins = slotHour * 60 + (e.clientY - rect.top) - dragOffsetRef.current.y
+    const snapped = Math.max(480, Math.min(1380, Math.round(rawMins / 15) * 15))
+    
+    const newStart = `${padTime(Math.floor(snapped / 60))}:${padTime(snapped % 60)}`
+    const [oh, om] = session.start_time.split(':').map(Number)
+    const [eh, em] = session.end_time.split(':').map(Number)
+    const duration = (eh * 60 + em) - (oh * 60 + om)
+    const endMins = snapped + duration
+    const newEnd = `${padTime(Math.floor(endMins / 60))}:${padTime(endMins % 60)}`
+
+    setDraggedSession(null)
+    const optimistic = { ...session, date: targetDate, start_time: newStart, end_time: newEnd }
+    setSessions(prev => sortSessions([...prev.filter(s => s.id !== session.id), optimistic]))
+
+    try {
+      const { updateSessionWithScope } = await import('@/lib/api')
+      const updated = await updateSessionWithScope(session.id, {
+        client_id: session.client_id, date: targetDate, start_time: newStart, end_time: newEnd, update_scope: 'single'
+      })
+      setSessions(prev => sortSessions([...prev.filter(s => s.id !== session.id), ...updated]))
+    } catch (err) {
+      console.error('Failed to update session:', err)
+      setSessions(prev => sortSessions([...prev.filter(s => s.id !== session.id), session]))
+    }
+  }
 
   const handleSessionSave = (session: Session) => {
     setSessions(prev => {
-      if (editingSession) {
-        // Update existing session - replace it
-        return sortSessions(prev.map(s => s.id === session.id ? session : s))
-      } else {
-        // Add new session - avoid duplicates
-        const exists = prev.some(s => s.id === session.id)
-        if (exists) {
-          return sortSessions(prev.map(s => s.id === session.id ? session : s))
-        }
-        return sortSessions([...prev, session])
-      }
+      const filtered = prev.filter(s => s.id !== session.id)
+      return sortSessions([...filtered, session])
     })
   }
 
   const handleSessionSaveMultiple = (newSessions: Session[]) => {
     setSessions(prev => {
-      if (editingSession) {
-        // For updates/conversions: remove the old session(s) and add new ones
-        // Filter out the editing session by ID
-        const withoutEditing = prev.filter(s => s.id !== editingSession.id)
-        // Add all the new/updated sessions, avoiding duplicates
-        const newSessionIds = new Set(newSessions.map(s => s.id))
-        const withoutDuplicates = withoutEditing.filter(s => !newSessionIds.has(s.id))
-        return sortSessions([...withoutDuplicates, ...newSessions])
-      } else {
-        // Creating new sessions: just add them, avoiding duplicates
-        const existingIds = new Set(prev.map(s => s.id))
-        const trulyNew = newSessions.filter(s => !existingIds.has(s.id))
-        return sortSessions([...prev, ...trulyNew])
-      }
+      const ids = new Set(newSessions.map(s => s.id))
+      if (editingSession) ids.add(editingSession.id)
+      return sortSessions([...prev.filter(s => !ids.has(s.id)), ...newSessions])
     })
   }
 
-  const handleDeleteSession = (sessionId: string) => {
-    setSessions(prev => prev.filter(s => s.id !== sessionId))
-  }
-
-  // Refetch sessions when bulk deletions occur
   const handleBulkDelete = async () => {
-    try {
-      const updatedSessions = await getSessions()
-      setSessions(sortSessions(updatedSessions))
-    } catch {
-      // Silently handle refetch errors
-    }
+    try { setSessions(sortSessions(await getSessions())) } catch {}
   }
 
-  const getSessionsForDate = (date: string) => {
-    return sessions.filter(session => session.date === date)
-  }
-
-  const handleSyncWeek = async () => {
-    // Global: sync ALL past unsynced sessions
-    const unsyncedSessions = sessions.filter(s => {
-      const sessionEnd = new Date(`${s.date}T${s.end_time}`)
-      return sessionEnd < new Date() && !s.synced_to_therapynotes
+  const handleSync = async (type: 'sessions' | 'notes') => {
+    const items = sessions.filter(s => {
+      const ended = new Date(`${s.date}T${s.end_time}`) < new Date()
+      if (type === 'sessions') return ended && !s.synced_to_therapynotes
+      return ended && s.synced_to_therapynotes && s.has_progress_note && !s.progress_note_synced
     })
+    if (!items.length) return
 
-    const totalSessions = unsyncedSessions.length
-    if (!totalSessions) return
-
-    setIsSyncing(true)
-    setSyncTarget('sessions')
+    setSyncTarget(type)
     const syncedIds: string[] = []
-    setSyncStatus(`Syncing ${syncedIds.length}/${totalSessions}`)
+    setSyncStatus(`Syncing 0/${items.length}`)
 
-    for (const session of unsyncedSessions) {
+    for (const session of items) {
       try {
-        const response = await fetch(`/api/therapynotes/sync-session/${session.id}`, {
-          method: 'POST'
-        })
-        if (response.ok) {
-          syncedIds.push(session.id)
-          setSyncStatus(`Syncing ${syncedIds.length}/${totalSessions}`)
+        if (type === 'sessions') {
+          const res = await fetch(`/api/therapynotes/sync-session/${session.id}`, { method: 'POST' })
+          if (res.ok) syncedIds.push(session.id)
+        } else {
+          const noteRes = await fetch(`/api/notes/${session.id}`)
+          const { data: note } = await noteRes.json()
+          if (!note) continue
+          const res = await fetch(`/api/therapynotes/sync-note/${note.id}`, { method: 'POST' })
+          if ((await res.json()).success) syncedIds.push(session.id)
         }
-      } catch {
-        // Continue with next session
-      }
+        setSyncStatus(`Syncing ${syncedIds.length}/${items.length}`)
+      } catch {}
     }
 
-    setSessions(prev => 
-      prev.map(s => syncedIds.includes(s.id) ? { ...s, synced_to_therapynotes: true } : s)
-    )
-    setIsSyncing(false)
-    setSyncStatus(null)
+    const field = type === 'sessions' ? 'synced_to_therapynotes' : 'progress_note_synced'
+    setSessions(prev => prev.map(s => syncedIds.includes(s.id) ? { ...s, [field]: true } : s))
     setSyncTarget(null)
-  }
-
-  const handleSyncProgressNotes = async () => {
-    // Global: sync ALL unsynced notes (only for sessions that have ended)
-    const unsyncedNotes = sessions.filter(s => {
-      const sessionEnd = new Date(`${s.date}T${s.end_time}`)
-      return sessionEnd < new Date() &&
-        s.has_progress_note && 
-        !s.progress_note_synced &&
-        s.synced_to_therapynotes
-    })
-
-    const totalNotes = unsyncedNotes.length
-    if (!totalNotes) return
-
-    setIsSyncingNotes(true)
-    setSyncTarget('notes')
-    const syncedIds: string[] = []
-    setSyncStatus(`Syncing ${syncedIds.length}/${totalNotes}`)
-
-    for (const session of unsyncedNotes) {
-      try {
-        // Fetch the progress note for this session
-        const noteResponse = await fetch(`/api/notes/${session.id}`)
-        const { data: note } = await noteResponse.json()
-
-        if (!note) {
-          continue
-        }
-
-        // Sync the note to TherapyNotes
-        const response = await fetch(`/api/therapynotes/sync-note/${note.id}`, { method: 'POST' })
-        const result = await response.json()
-
-        if (result.success) {
-          syncedIds.push(session.id)
-          setSyncStatus(`Syncing ${syncedIds.length}/${totalNotes}`)
-        }
-      } catch {
-        // Continue with next session
-      }
-    }
-
-    // Update local state to reflect synced notes
-    setSessions(prev => 
-      prev.map(s => syncedIds.includes(s.id) ? { ...s, progress_note_synced: true } : s)
-    )
-    
-    setIsSyncingNotes(false)
     setSyncStatus(null)
-    setSyncTarget(null)
   }
 
-  const handleImportedSessions = (imported: Session[]) => {
-    setSessions(prev => sortSessions([...prev, ...imported]))
-  }
-
-  const renderSyncLabel = (target: 'sessions' | 'notes', defaultLabel: string) => {
-    if (syncTarget !== target || !syncStatus) {
-      return defaultLabel
-    }
-
-    // Only show syncing state with spinner
-    if (syncStatus.startsWith('Syncing')) {
-      return (
-        <span className="inline-flex items-center gap-1.5">
-          <svg
-            className="h-3.5 w-3.5 animate-spin text-white/90"
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-            />
-          </svg>
-          {syncStatus}
-        </span>
-      )
-    }
-
-    return defaultLabel
-  }
-
-  // Calculate global counts for button labels
-  const pastUnsyncedCount = sessions.filter(s => {
-    const sessionEnd = new Date(`${s.date}T${s.end_time}`)
-    return sessionEnd < new Date() && !s.synced_to_therapynotes
-  }).length
-
+  // Computed values
+  const isSyncing = syncTarget !== null
+  const pastUnsyncedCount = sessions.filter(s => new Date(`${s.date}T${s.end_time}`) < new Date() && !s.synced_to_therapynotes).length
   const unsyncedNotesCount = sessions.filter(s => {
-    const sessionEnd = new Date(`${s.date}T${s.end_time}`)
-    return sessionEnd < new Date() &&
-      s.synced_to_therapynotes && 
-      s.has_progress_note && 
-      !s.progress_note_synced
+    const ended = new Date(`${s.date}T${s.end_time}`) < new Date()
+    return ended && s.synced_to_therapynotes && s.has_progress_note && !s.progress_note_synced
   }).length
 
-  // Button labels based on state
-  const sessionsLabel = pastUnsyncedCount > 0 
-    ? `Sync Sessions (${pastUnsyncedCount})`
-    : 'Sessions Synced'
-  
-  const notesLabel = unsyncedNotesCount > 0
-    ? `Sync Notes (${unsyncedNotesCount})`
-    : 'Notes Synced'
+  const displayTitle = useMemo(() => {
+    if (view === 'day' && dayDate) return `${dayDate.month} ${dayDate.dayNumber}, ${dayDate.year}`
+    if (view === 'week' && weekDates.length) {
+      const start = parseLocalDateString(weekDates[0].date)
+      const end = parseLocalDateString(weekDates[6].date)
+      const sm = start.toLocaleDateString('en-US', { month: 'short' })
+      const em = end.toLocaleDateString('en-US', { month: 'short' })
+      const sy = start.getFullYear(), ey = end.getFullYear()
+      if (sm !== em || sy !== ey) return sy === ey ? `${sm} - ${em} ${sy}` : `${sm} ${sy} - ${em} ${ey}`
+      return `${start.toLocaleDateString('en-US', { month: 'long' })} ${sy}`
+    }
+    if (view === 'month' && monthData) return `${monthData.month} ${monthData.year}`
+    return ''
+  }, [view, dayDate, weekDates, monthData])
+
+  // Render helpers
+  const SessionIcons = ({ session }: { session: Session }) => {
+    const isFuture = new Date(`${session.date}T${session.start_time}`) > new Date()
+    return (
+      <div className="flex items-center gap-1 flex-shrink-0">
+        {session.synced_to_therapynotes && (
+          <svg className="w-3 h-3 text-[var(--primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ filter: 'drop-shadow(0 0 2px rgba(0,191,255,0.35))' }}>
+            <title>Synced</title>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+        {!isFuture && session.has_progress_note && session.synced_to_therapynotes && (
+          <svg className="w-3 h-3 text-[var(--primary)] cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            onClick={(e) => { e.stopPropagation(); router.push(`/notes/${session.id}`) }}>
+            <title>Note</title>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        )}
+      </div>
+    )
+  }
+
+  const SessionCard = ({ session, position }: { session: Session; position: { top: number; height: number } }) => (
+    <div
+      draggable
+      onDragStart={(e) => handleDragStart(e, session)}
+      onDragEnd={handleDragEnd}
+      onClick={(e) => { e.stopPropagation(); handleEditSession(session) }}
+      className={`absolute p-1.5 rounded-md text-xs cursor-grab active:cursor-grabbing overflow-hidden transition-colors ${getSessionStyle(session)}`}
+      style={{ left: 2, right: 2, top: position.top + 2, height: Math.max(position.height - 4, 20), minHeight: 20, zIndex: 1 }}
+    >
+      <div className="flex items-center justify-between gap-1 mb-0.5">
+        <div className="font-medium text-xs">{formatTime(session.start_time)}</div>
+        <SessionIcons session={session} />
+      </div>
+      <div className="text-xs text-muted-foreground truncate">{session.clients?.name || 'Unknown Client'}</div>
+    </div>
+  )
+
+  const TimeLabel = ({ hour, label }: { hour: number; label: string }) => (
+    <div className="pr-3 text-sm text-muted-foreground text-right min-h-[60px] relative">
+      {hour !== 8 && <span className="absolute top-0 right-3" style={{ transform: 'translateY(-50%)', lineHeight: 1 }}>{label}</span>}
+    </div>
+  )
+
+  const CurrentTimeIndicator = ({ position, left, width }: { position: number; left: string; width: string }) => (
+    <div className="absolute left-0 right-0 pointer-events-none z-20" style={{ top: position }}>
+      <div className="absolute w-3 h-3 rounded-full bg-[var(--primary)]" style={{ left, transform: 'translate(-50%, -50%)' }} />
+      <div className="absolute border-t-2 border-[var(--primary)]" style={{ left, width }} />
+    </div>
+  )
+
+  const SyncButton = ({ type, count, label }: { type: 'sessions' | 'notes'; count: number; label: string }) => {
+    const isActive = count > 0
+    const isSyncingThis = syncTarget === type
+    
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleSync(type)}
+        disabled={!isActive || isSyncing}
+        className={`h-8 px-2 sm:px-3 text-xs whitespace-nowrap ${
+          isActive 
+            ? type === 'sessions'
+              ? 'bg-[var(--primary)] border-[var(--primary)] text-white hover:bg-[var(--primary)]/90 hover:text-white'
+              : 'bg-[var(--secondary)] border-[var(--secondary)] text-white hover:bg-[var(--secondary)]/90 hover:text-white'
+            : ''
+        }`}
+      >
+        {isSyncingThis && syncStatus?.startsWith('Syncing') ? (
+          <span className="inline-flex items-center gap-1.5">
+            <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            </svg>
+            {syncStatus}
+          </span>
+        ) : label}
+      </Button>
+    )
+  }
+
+  const gridCols = view === 'week' ? '60px repeat(7, 1fr)' : '60px 1fr'
+  const dayColumns = view === 'week' ? weekDates : dayDate ? [dayDate] : []
 
   return (
     <>
-      <div className="container mx-auto px-4 max-w-6xl">
-        <div className="py-6">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <h1 className="text-3xl font-bold text-foreground">Calendar</h1>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="h-8 px-2 sm:px-3 text-xs whitespace-nowrap text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110"
-                  style={{ backgroundImage: 'none' }}
-                >
-                  Import Sessions
+      <div className="container mx-auto px-3 sm:px-4 max-w-6xl">
+        <div className="py-4 sm:py-6">
+          {/* Header */}
+          <div className="mb-4 sm:mb-6 flex flex-wrap items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center flex-wrap gap-2 sm:gap-3">
+              <Button variant="outline" size="sm" onClick={() => setOffset(0)} className="h-8 px-2 sm:px-3 text-xs">Today</Button>
+              <div className="flex items-center gap-0.5 sm:gap-1">
+                <Button variant="ghost" size="sm" onClick={() => setOffset(o => o - 1)} className="h-8 w-8 p-0" aria-label="Previous">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleSyncWeek}
-                  disabled={pastUnsyncedCount === 0 || isSyncing || isSyncingNotes}
-                  className={`h-8 px-2 sm:px-3 text-xs whitespace-nowrap ${
-                    pastUnsyncedCount === 0 
-                      ? 'bg-background border-2 border-border text-foreground cursor-default hover:bg-background' 
-                      : 'text-white bg-[var(--primary)] hover:bg-[var(--primary)] hover:brightness-110'
-                  }`}
-                  style={{ backgroundImage: 'none' }}
-                >
-                  {renderSyncLabel('sessions', sessionsLabel)}
+                <Button variant="ghost" size="sm" onClick={() => setOffset(o => o + 1)} className="h-8 w-8 p-0" aria-label="Next">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                 </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleSyncProgressNotes}
-                  disabled={unsyncedNotesCount === 0 || isSyncingNotes || isSyncing}
-                  className={`h-8 px-2 sm:px-3 text-xs whitespace-nowrap ${
-                    unsyncedNotesCount === 0
-                      ? 'bg-background border-2 border-border text-foreground cursor-default hover:bg-background'
-                      : 'text-white bg-[var(--secondary)] hover:bg-[var(--secondary)] hover:brightness-110'
-                  }`}
-                  style={{ backgroundImage: 'none' }}
-                >
-                  {renderSyncLabel('notes', notesLabel)}
-                </Button>
+                <h2 className="text-lg sm:text-2xl font-semibold text-foreground whitespace-nowrap ml-0.5 sm:ml-1">{displayTitle}</h2>
+              </div>
+              <div className="inline-flex items-center rounded-lg bg-muted/60 p-1">
+                {(['day', 'week', 'month'] as const).map(v => (
+                  <button key={v} onClick={() => { setView(v); setOffset(0) }}
+                    className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${view === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+                    {v.charAt(0).toUpperCase() + v.slice(1)}
+                  </button>
+                ))}
               </div>
             </div>
-
-            <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentWeekOffset(prev => prev - 1)}
-                className="h-8 w-8 p-0"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => setIsImportModalOpen(true)}
+                className="h-8 px-2 sm:px-3 text-xs bg-[var(--primary)] border-[var(--primary)] text-white hover:bg-[var(--primary)]/90 hover:text-white">
+                Import Sessions
               </Button>
-              
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-foreground">
-                  {(() => {
-                    const startDate = parseLocalDateString(weekDates[0].date)
-                    const endDate = parseLocalDateString(weekDates[6].date)
-                    
-                    const startMonth = startDate.toLocaleDateString('en-US', { month: 'short' })
-                    const startDay = startDate.getDate()
-                    const endMonth = endDate.toLocaleDateString('en-US', { month: 'short' })
-                    const endDay = endDate.getDate()
-                    
-                    if (startMonth === endMonth) {
-                      return `${startMonth} ${startDay}-${endDay}`
-                    } else {
-                      return `${startMonth} ${startDay} - ${endMonth} ${endDay}`
-                    }
-                  })()}
-                </span>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setCurrentWeekOffset(0)
-                    setTimeout(() => todayCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
-                  }}
-                  className="h-8 px-3 text-xs"
-                >
-                  Today
-                </Button>
-                
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCurrentWeekOffset(prev => prev + 1)}
-                className="h-8 w-8 p-0"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Button>
-            </div>
-
-            <div className="space-y-3 pb-6">
-              {weekDates.map((dayData) => {
-                const daySessions = getSessionsForDate(dayData.date)
-                const formattedDate = formatDate(dayData.date)
-                
-                return (
-                  <Card 
-                    key={dayData.date}
-                    ref={dayData.isToday ? todayCardRef : null}
-                    className={`px-4 pt-4 pb-3 cursor-pointer hover:bg-muted/30 transition-colors border ${
-                      dayData.isToday ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]/30' : 'border-border'
-                    }`}
-                    >
-                     <div className="mb-1">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-lg">
-                              {dayData.dayName}{' '}
-                              <span className="text-sm font-normal text-muted-foreground">
-                                {formattedDate}
-                              </span>
-                            </h3>
-                          </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Add session"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            handleDayClick(dayData.date)
-                          }}
-                          className="h-8 w-8 p-0"
-                        >
-                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                          </svg>
-                        </Button>
-                      </div>
-                    </div>
-
-                    {isLoading ? (
-                      <div className="text-sm text-muted-foreground">Loading...</div>
-                    ) : daySessions.length > 0 ? (
-                      <div className="border-t border-border divide-y divide-border">
-                        {daySessions.map((session) => (
-                          <SessionCard
-                            key={session.id}
-                            session={session}
-                            onEdit={handleEditSession}
-                            onDelete={handleDeleteSession}
-                            onBulkDelete={handleBulkDelete}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="sr-only" aria-live="polite">
-                        No sessions scheduled
-                      </span>
-                    )}
-                  </Card>
-                )
-              })}
+              <SyncButton type="sessions" count={pastUnsyncedCount} label={pastUnsyncedCount > 0 ? `Sync Sessions (${pastUnsyncedCount})` : 'Sessions Synced'} />
+              <SyncButton type="notes" count={unsyncedNotesCount} label={unsyncedNotesCount > 0 ? `Sync Notes (${unsyncedNotesCount})` : 'Notes Synced'} />
             </div>
           </div>
-        </div>
 
-      {/* Session Modal */}
+          {/* Calendar Grid */}
+          <div className="overflow-auto pb-6" style={{ maxHeight: 'calc(100vh - 120px)' }}>
+            {/* Week/Day View */}
+            {(view === 'week' || view === 'day') && dayColumns.length > 0 && (
+              <div style={{ minWidth: view === 'week' ? 800 : 400 }}>
+                {/* Headers */}
+                <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm grid" style={{ gridTemplateColumns: gridCols }}>
+                  <div className="p-2 min-h-[44px] sm:min-h-[48px]" />
+                  {dayColumns.map(d => (
+                    <div key={d.date} className={`border-b border-border p-2 sm:p-2.5 text-center flex items-center justify-center min-h-[44px] sm:min-h-[48px] ${d.isToday ? 'bg-[var(--primary)]/10' : ''}`}>
+                      <div className={`font-semibold text-xs sm:text-sm ${d.isToday ? 'text-[var(--primary)]' : 'text-muted-foreground'}`}>
+                        {d.dayName} {d.dayNumber}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Time Grid */}
+                <div className="relative">
+                  {timeSlots.map((slot, i) => (
+                    <div key={slot.timeString} className="grid items-stretch" style={{ gridTemplateColumns: gridCols }}>
+                      <TimeLabel hour={slot.hour} label={slot.label} />
+                      {dayColumns.map(d => {
+                        const cellSessions = getSessionsForSlot(d.date, slot.hour)
+                        return (
+                          <div key={`${d.date}-${slot.timeString}`}
+                            className={`border-r border-border last:border-r-0 min-h-[60px] relative cursor-pointer hover:bg-muted/30 overflow-visible ${i > 0 ? 'border-t border-border' : ''}`}
+                            onClick={() => openModal(d.date, slot.timeString)}
+                            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                            onDrop={(e) => handleDrop(e, d.date, slot.hour)}>
+                            {cellSessions.map(s => <SessionCard key={s.id} session={s} position={getSessionPosition(s)} />)}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+
+                  {/* Current Time Indicator */}
+                  {view === 'week' && weekDates.some(d => d.isToday) && (() => {
+                    const idx = weekDates.findIndex(d => d.isToday)
+                    const pos = getCurrentTimePosition(weekDates[idx]?.date || '')
+                    if (!pos) return null
+                    return <CurrentTimeIndicator position={pos} left={`calc(60px + (100% - 60px) * ${idx} / 7)`} width="calc((100% - 60px) / 7)" />
+                  })()}
+                  {view === 'day' && dayDate?.isToday && (() => {
+                    const pos = getCurrentTimePosition(dayDate.date)
+                    return pos ? <CurrentTimeIndicator position={pos} left="60px" width="calc(100% - 60px)" /> : null
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Month View */}
+            {view === 'month' && monthData && (
+              <div style={{ minWidth: 700 }}>
+                <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm grid grid-cols-7">
+                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                    <div key={day} className="p-2 sm:p-2.5 text-center flex items-center justify-center min-h-[44px] sm:min-h-[48px]">
+                      <div className="font-semibold text-xs sm:text-sm text-muted-foreground">{day}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-7">
+                  {monthData.dates.map(d => {
+                    const daySessions = sessions.filter(s => s.date === d.date).sort((a, b) => a.start_time.localeCompare(b.start_time))
+                    return (
+                      <div key={d.date}
+                        className={`min-h-[120px] border-b border-r border-border [&:nth-child(7n)]:border-r-0 p-2 cursor-pointer hover:bg-muted/30 ${!d.isCurrentMonth ? 'bg-muted/20' : ''} ${d.isToday ? 'bg-[var(--primary)]/10' : ''}`}
+                        onClick={() => openModal(d.date)}>
+                        <div className={!d.isCurrentMonth ? 'opacity-50' : ''}>
+                          <div className={`font-semibold text-sm mb-1.5 ${d.isToday ? 'text-[var(--primary)]' : 'text-muted-foreground'}`}>{d.dayNumber}</div>
+                          <div className="space-y-1">
+                            {daySessions.slice(0, 4).map(s => (
+                              <div 
+                                key={s.id} 
+                                onClick={(e) => { e.stopPropagation(); handleEditSession(s) }}
+                                className={`text-xs p-1.5 rounded-md cursor-pointer overflow-hidden transition-colors ${getSessionStyle(s)}`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-medium truncate">{formatTime(s.start_time)}</span>
+                                  <SessionIcons session={s} />
+                                </div>
+                                <div className="truncate text-muted-foreground text-xs">{s.clients?.name || 'Unknown Client'}</div>
+                              </div>
+                            ))}
+                            {daySessions.length > 4 && <div className="text-xs text-muted-foreground pt-0.5">+{daySessions.length - 4} more</div>}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       <SessionModal
         isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false)
-          setEditingSession(null)
-        }}
+        onClose={() => { setIsModalOpen(false); setEditingSession(null); setSelectedTime('') }}
         selectedDate={selectedDate}
+        selectedTime={selectedTime}
         editingSession={editingSession}
         onSave={handleSessionSave}
         onSaveMultiple={handleSessionSaveMultiple}
         onBulkDelete={handleBulkDelete}
       />
-
-      {/* Import Sessions Modal */}
-      <ImportCalendarModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onImport={handleImportedSessions}
-      />
+      <ImportCalendarModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onImport={(s) => setSessions(prev => sortSessions([...prev, ...s]))} />
     </>
   )
 }
