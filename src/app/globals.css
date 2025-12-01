@@ -42,7 +42,7 @@
   --secondary-foreground: var(--charcoal);
   --muted: hsl(210 40% 94%);
   --muted-foreground: hsl(215.4 16.3% 46.9%);
-  --accent: var(--secondary);
+  --accent: var(--primary);
   --accent-foreground: var(--charcoal);
   --border: hsl(214.3 31.8% 91.4%);
   --input: hsl(214.3 31.8% 91.4%);
@@ -129,44 +129,38 @@
   --info-light: rgba(59, 130, 246, 0.1);
 }
 
-/* Logo gradient styling */
+/* Logo styling - flat primary color */
 .logo-gradient {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: var(--primary);
 }
 
 .dark .logo-gradient {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  color: transparent;
+  color: var(--primary);
 }
 
-/* Button gradient styling */
+/* Button styling - flat primary color */
 .btn-gradient {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  color: var(--offwhite);
+  background: var(--primary);
+  color: var(--primary-foreground);
   border: none;
   transition: all 0.3s ease;
 }
 
 .btn-gradient:hover {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: var(--primary);
+  opacity: 0.9;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 191, 255, 0.4);
 }
 
 .dark .btn-gradient {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-  color: var(--charcoal);
+  background: var(--primary);
+  color: var(--primary-foreground);
 }
 
 .dark .btn-gradient:hover {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  background: var(--primary);
+  opacity: 0.9;
   box-shadow: 0 4px 12px rgba(0, 191, 255, 0.4);
 }
 

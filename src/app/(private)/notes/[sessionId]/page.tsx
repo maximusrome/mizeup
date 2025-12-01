@@ -109,7 +109,7 @@ const QUESTIONS = [
   { id: 'q2', text: 'Did the caregiver\'s emotions/behavior interfere with implementation of the treatment plan?', answer: false, code: '90785', note: 'Caregiver emotions and behaviors, such as agitation or disagreement with the plan, interfered with treatment implementation by disrupting focus. Interventions included addressing concerns, mediating dynamics, and refocusing on goals to enable effective care.' },
   { id: 'q3', text: 'Was there evidence/disclosure of a sentinel event and mandated report to a third party (e.g., abuse or neglect with report to state agency) with initiation of discussion of the sentinel event and/or report with patient and other visit participants?', answer: false, code: '90785', note: 'Evidence or disclosure of a sentinel event, such as abuse or neglect, required a mandated report to a third party like a state agency. Discussion of the event and report process involved the patient and participants. This complicated care delivery by shifting focus to crisis response. Interventions included explaining obligations, providing support, and integrating into the plan.' },
   { id: 'q4', text: 'Did you use play equipment, physical devices, interpreter, or translator to overcome significant language barriers?', answer: false, code: '90785', note: 'Used play equipment, physical devices, interpreter, or translator to overcome significant language or communication barriers due to the patient\'s limited skills. This complicated care delivery by requiring adapted interaction methods. Interventions included employing these tools to ensure engagement and comprehension.' },
-  { id: 'q5', text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?', answer: false, code: '99050', note: 'This session was provided in the office outside the practice\'s regularly scheduled office hours of Monday-Friday 9:00 AM-5:00 PM, thereby meeting criteria for add-on code 99050.' },
+  { id: 'q5', text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?', answer: false, code: '99050', note: 'Session with {clientName} on {date} at {time} was provided in the office outside of regularly scheduled office hours (Monday–Friday 9:00 AM – 5:00 PM) or days when the office is normally closed, to accommodate the patient’s scheduling constraints and/or clinical needs.' },
   { id: 'q6', text: 'Was the presenting problem typically life-threatening or complex and require immediate attention to a patient in high distress?', answer: false, code: '90839', note: 'This session addressed a presenting problem that was life-threatening or complex, requiring immediate attention to a patient in high distress. Crisis intervention techniques were employed to stabilize the patient and ensure safety.' },
   { id: 'q7', text: 'Was the face-to-face crisis psychotherapy total time greater than 75 minutes?', answer: false, code: '90840', note: 'The face-to-face crisis psychotherapy session exceeded 75 minutes in duration, requiring extended time to adequately address the crisis situation and ensure patient stabilization.' }
 ]
@@ -299,7 +299,21 @@ export default function SessionProgressNotePage() {
         // Load billing codes (legacy support for old format)
         if (content.billingCodes) {
           const codes = content.billingCodes.map((c: { text: string }) => c.text)
-          setQuestions(prev => prev.map(q => ({ ...q, answer: codes.includes(q.note) })))
+          setQuestions(prev => prev.map(q => {
+            // Check if saved code text matches template note
+            const matchesTemplate = codes.includes(q.note)
+            // Also check if saved text contains key parts of this billing code's pattern
+            // (for formatted notes or legacy formats)
+            const matchesPattern = codes.some(codeText => {
+              if (q.code === '99050') {
+                return codeText.includes('outside of regularly scheduled office hours') && 
+                       codeText.includes('Monday–Friday 9:00 AM – 5:00 PM')
+              }
+              // For other codes, check if it matches the template
+              return codeText === q.note
+            })
+            return { ...q, answer: matchesTemplate || matchesPattern }
+          }))
         }
         
         // Load crisis session duration
@@ -379,6 +393,23 @@ export default function SessionProgressNotePage() {
 
   
 
+  // Helper to format billing code note with session data
+  const formatNoteText = (note: string): string => {
+    if (!session || !note.includes('{')) return note
+    
+    // Extract first name only (first word before space)
+    const fullName = session.clients?.name || 'patient'
+    const clientName = fullName.split(' ')[0]
+    const date = new Date(`${session.date}T00:00:00`)
+    const formattedDate = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+    const formattedTime = formatTime(session.start_time)
+    
+    return note
+      .replace('{clientName}', clientName)
+      .replace('{date}', formattedDate)
+      .replace('{time}', formattedTime)
+  }
+
   const toggle = (id: string) => {
     setQuestions(prev => {
       const q = prev.find(x => x.id === id)
@@ -389,25 +420,39 @@ export default function SessionProgressNotePage() {
         x.code === q.code ? { ...x, answer: false } : x
       )
       
+      const formattedNote = formatNoteText(q.note)
+      
       setAssessment(curr => {
-        // If deselecting (was selected), remove the note
+        // If deselecting (was selected), remove the formatted note
         if (q.answer) {
-          return curr.replace(q.note, '').replace(/\n\n\n+/g, '\n\n').trim()
+          // Try to find and remove the formatted note, or fall back to template
+          let updated = curr.replace(formattedNote, '').replace(/\n\n\n+/g, '\n\n').trim()
+          // Also try removing template version if formatted wasn't found
+          if (updated === curr) {
+            updated = curr.replace(q.note, '').replace(/\n\n\n+/g, '\n\n').trim()
+          }
+          return updated
         }
         
         // If selecting, check if note already exists to prevent duplicates
-        if (curr.includes(q.note)) {
+        if (curr.includes(formattedNote) || curr.includes(q.note)) {
           return curr
         }
         
         // Check if another question with same code was selected and replace it
         const otherDeselected = prev.find(x => x.code === q.code && x.id !== id && x.answer)
         if (otherDeselected) {
-          return curr.replace(otherDeselected.note, q.note).trim()
+          const otherFormatted = formatNoteText(otherDeselected.note)
+          // Try to remove formatted version first, then template
+          let updated = curr.replace(otherFormatted, formattedNote).trim()
+          if (updated === curr) {
+            updated = curr.replace(otherDeselected.note, formattedNote).trim()
+          }
+          return updated
         }
         
-        // Append the new note
-        return curr ? `${curr}\n\n${q.note}` : q.note
+        // Append the formatted note
+        return curr ? `${curr}\n\n${formattedNote}` : formattedNote
       })
       
       return newQuestions
@@ -470,8 +515,26 @@ export default function SessionProgressNotePage() {
     
     // Collect all progress note data
     const selectedBillingCodes = questions.filter(q => q.answer)
+    
+    // Format billing code notes with session data
+    const formatBillingCodeNote = (note: string): string => {
+      if (!session) return note
+      
+      // Extract first name only (first word before space)
+      const fullName = session.clients?.name || 'patient'
+      const clientName = fullName.split(' ')[0]
+      const date = new Date(`${session.date}T00:00:00`)
+      const formattedDate = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+      const formattedTime = formatTime(session.start_time)
+      
+      return note
+        .replace('{clientName}', clientName)
+        .replace('{date}', formattedDate)
+        .replace('{time}', formattedTime)
+    }
+    
     const content: ProgressNoteContent = {
-      billingCodes: selectedBillingCodes.map(q => ({ code: q.code, text: q.note })),
+      billingCodes: selectedBillingCodes.map(q => ({ code: q.code, text: formatBillingCodeNote(q.note) })),
       diagnosis: diagnosisCode || diagnosisDescription ? { code: diagnosisCode, description: diagnosisDescription } : undefined,
       diagnoses: additionalDiagnoses.length > 0 ? additionalDiagnoses : undefined,
       treatmentObjectivesDetailed: treatmentObjectivesDetailed.length > 0 ? treatmentObjectivesDetailed : undefined,
