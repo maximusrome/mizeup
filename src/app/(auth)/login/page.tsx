@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -18,7 +18,36 @@ function AuthPageContent() {
   const [activeTab, setActiveTab] = useState('login')
   const [showLoginPassword, setShowLoginPassword] = useState(false)
   const [showSignupPassword, setShowSignupPassword] = useState(false)
+  const [loginPasswordValue, setLoginPasswordValue] = useState('')
+  const [signupPasswordValue, setSignupPasswordValue] = useState('')
+  const [showLastCharLogin, setShowLastCharLogin] = useState(false)
+  const [showLastCharSignup, setShowLastCharSignup] = useState(false)
+  const loginTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+  const signupTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const searchParams = useSearchParams()
+
+  const getDisplayValue = (val: string, showFull: boolean, showLast: boolean) => 
+    showFull ? val : val ? '•'.repeat(val.length - 1) + (showLast ? val.slice(-1) : '•') : ''
+
+  const handlePasswordChange = (val: string, current: string, setValue: (v: string) => void, showFull: boolean, setShowLast: (b: boolean) => void, timeoutRef: React.MutableRefObject<NodeJS.Timeout | undefined>) => {
+    if (val.length === 0) {
+      setValue('')
+      setShowLast(false)
+      clearTimeout(timeoutRef.current)
+    } else if (val.length > current.length) {
+      const newChar = val.slice(-1)
+      if (newChar !== '•') {
+        setValue(current + newChar)
+        if (!showFull) {
+          clearTimeout(timeoutRef.current)
+          setShowLast(true)
+          timeoutRef.current = setTimeout(() => setShowLast(false), 1000)
+        }
+      }
+    } else {
+      setValue(current.slice(0, -1))
+    }
+  }
 
   useEffect(() => {
     const message = searchParams.get('message')
@@ -101,12 +130,14 @@ function AuthPageContent() {
                 <div className="space-y-2">
                   <Label htmlFor="login-password">Password</Label>
                   <div className="relative">
+                    <input type="hidden" name="password" value={loginPasswordValue} />
                     <Input 
                       id="login-password"
-                      name="password" 
-                      type={showLoginPassword ? "text" : "password"} 
+                      type="text"
+                      value={getDisplayValue(loginPasswordValue, showLoginPassword, showLastCharLogin)}
                       placeholder="Enter your password" 
                       className="pr-10"
+                      onChange={(e) => handlePasswordChange(e.target.value, loginPasswordValue, setLoginPasswordValue, showLoginPassword, setShowLastCharLogin, loginTimeoutRef)}
                       required 
                     />
                     <button
@@ -153,12 +184,14 @@ function AuthPageContent() {
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
                   <div className="relative">
+                    <input type="hidden" name="password" value={signupPasswordValue} />
                     <Input 
                       id="signup-password"
-                      name="password" 
-                      type={showSignupPassword ? "text" : "password"} 
+                      type="text"
+                      value={getDisplayValue(signupPasswordValue, showSignupPassword, showLastCharSignup)}
                       placeholder="Create a password" 
                       className="pr-10"
+                      onChange={(e) => handlePasswordChange(e.target.value, signupPasswordValue, setSignupPasswordValue, showSignupPassword, setShowLastCharSignup, signupTimeoutRef)}
                       minLength={8}
                       required 
                     />

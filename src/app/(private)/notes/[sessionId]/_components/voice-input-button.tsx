@@ -89,7 +89,7 @@ class VoiceRecognitionManager {
       }
 
       clearTimeout(this.silenceTimer)
-      this.silenceTimer = window.setTimeout(() => this.stop(), 3000)
+      this.silenceTimer = window.setTimeout(() => this.stop(), 4000)
 
       if (final) this.callback?.(final.trim(), true)
       else if (interim) this.callback?.(interim, false)
