@@ -37,20 +37,22 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/reset-password') &&
-    !request.nextUrl.pathname.startsWith('/update-password') &&
-    !request.nextUrl.pathname.startsWith('/confirm') &&
-    !request.nextUrl.pathname.startsWith('/api/contact') &&
-    !request.nextUrl.pathname.startsWith('/api/reminders/tomorrow') &&
-    request.nextUrl.pathname !== '/'
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+  const path = request.nextUrl.pathname
+  const authRoutes = ['/login', '/reset-password']
+  const publicRoutes = ['/confirm', '/update-password', '/api/contact', '/api/reminders/tomorrow']
+  
+  const isAuthPage = authRoutes.some(route => path.startsWith(route))
+  const isHomePage = path === '/'
+  const isPublicPage = publicRoutes.some(route => path.startsWith(route))
+
+  // Redirect authenticated users from home/auth pages to calendar
+  if (user && (isHomePage || isAuthPage)) {
+    return NextResponse.redirect(new URL('/calendar', request.url))
+  }
+
+  // Redirect unauthenticated users to login (except public pages)
+  if (!user && !isAuthPage && !isHomePage && !isPublicPage) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is.
