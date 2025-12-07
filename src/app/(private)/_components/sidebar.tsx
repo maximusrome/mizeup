@@ -12,12 +12,14 @@ import {
   Menu, 
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText
 } from 'lucide-react'
 
 const navigation = [
   { name: 'Calendar', href: '/calendar', icon: Calendar },
   { name: 'Revenue', href: '/revenue', icon: DollarSign },
+  { name: 'Report', href: '/report', icon: FileText },
   { name: 'Clients', href: '/clients', icon: Users },
 ]
 

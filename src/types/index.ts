@@ -94,6 +94,8 @@ export interface ProgressNoteContent {
   }
   // Crisis session duration (for 90840 add-on code)
   crisisSessionDuration?: number
+  // Telephone service duration (for 98966-98968 codes)
+  phoneDuration?: number
 }
 
 export interface ProgressNote {
@@ -175,4 +177,84 @@ export interface CalendarEventWithMapping extends CalendarEvent {
   selected: boolean
   matchedClientId?: string
   matchedClientName?: string
+}
+
+// TherapyNotes ERA Billing Report types
+export interface SessionBillingData {
+  serviceDate: string // MM/DD/YYYY format
+  clientName: string // Properly capitalized patient name
+  serviceCode: string // CPT code (e.g., 90837, 90785, 90791)
+  chargedAmount: number // Amount billed to insurance
+  insurancePaid: number // Amount paid by insurance
+  patientResponsibility: number // chargedAmount - insurancePaid
+  payerName: string // Insurance company name
+  eraId: number // ERA ID from TherapyNotes
+}
+
+// TherapyNotes Schedule Session types
+export interface ScheduleSession {
+  id: number // Calendar entry ID
+  date: string // MM/DD/YYYY format
+  time: string // HH:MM AM/PM format
+  startDateTime: string // ISO datetime for sorting
+  clientName: string // Patient name
+  clientId: number // Patient ID
+  sessionType: string // e.g., "Therapy Session", "Therapy Intake"
+  serviceCode: string // e.g., "90837"
+  status: number // 1 = confirmed, 3 = cancelled
+}
+
+// Combined schedule + billing row
+export interface CombinedSessionRow {
+  // Schedule data (left side)
+  schedule: ScheduleSession | null
+  // Billing data (right side) - may have multiple services per session (e.g., 90837 + 90785)
+  billing: SessionBillingData[]
+  // Match status
+  hasSchedule: boolean
+  hasBilling: boolean
+}
+
+export interface CombinedReportData {
+  rows: CombinedSessionRow[]
+  scheduleSessions: ScheduleSession[]
+  billingSessions: SessionBillingData[]
+  totals: {
+    totalCharged: number
+    totalInsurancePaid: number
+    totalPatientResponsibility: number
+    totalScheduledSessions: number
+    totalBilledServices: number
+    matchedSessions: number
+    unmatchedSchedule: number
+    unmatchedBilling: number
+  }
+  filters: {
+    clients: string[]
+    codes: string[]
+    payers: string[]
+  }
+  dateRange: {
+    start: string
+    end: string
+  }
+}
+
+export interface BillingReportData {
+  sessions: SessionBillingData[]
+  totals: {
+    totalCharged: number
+    totalInsurancePaid: number
+    totalPatientResponsibility: number
+    sessionCount: number
+  }
+  filters: {
+    clients: string[]
+    codes: string[]
+    payers: string[]
+  }
+  dateRange: {
+    start: string
+    end: string
+  }
 }
