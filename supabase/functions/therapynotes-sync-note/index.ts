@@ -61,8 +61,37 @@ function toStringArray(list: unknown): string[] {
     .filter(Boolean)
 }
 
+// Telephone service code IDs
+const PHONE_SERVICE_CODES: Record<string, { Id: number; Code: string }> = {
+  "98966": { Id: 4320329, Code: "98966" },
+  "98967": { Id: 4320330, Code: "98967" },
+  "98968": { Id: 4320332, Code: "98968" }
+}
+
 // Build service codes array with add-on codes if applicable
-const buildServiceCodes = (billingCodes: any[]): any[] => {
+const buildServiceCodes = (billingCodes: any[], phoneDuration?: number): any[] => {
+  // Check if this is a telephone service (98966, 98967, 98968)
+  const phoneCode = billingCodes?.find((bc: any) => 
+    bc.code === "98966" || bc.code === "98967" || bc.code === "98968"
+  )
+  
+  if (phoneCode) {
+    // For telephone services, determine the correct code based on duration
+    let code = phoneCode.code
+    if (phoneDuration !== undefined) {
+      if (phoneDuration >= 5 && phoneDuration <= 10) {
+        code = "98966"
+      } else if (phoneDuration >= 11 && phoneDuration <= 20) {
+        code = "98967"
+      } else if (phoneDuration >= 21 && phoneDuration <= 30) {
+        code = "98968"
+      }
+    }
+    const phoneInfo = PHONE_SERVICE_CODES[code] || PHONE_SERVICE_CODES["98966"]
+    return [{ Id: phoneInfo.Id, Code: phoneInfo.Code, Units: 1, IsAddOn: false }]
+  }
+  
+  // Standard session codes
   const codes = [
     billingCodes?.some((bc: any) => bc.code === "90839")
       ? { Id: 4301237, Code: "90839", Units: 1, IsAddOn: false }
@@ -80,6 +109,26 @@ const buildServiceCodes = (billingCodes: any[]): any[] => {
   }
   
   return codes
+}
+
+// Get session duration based on billing codes
+const getSessionDuration = (billingCodes: any[], phoneDuration?: number, crisisSessionDuration?: number): number => {
+  // Check if this is a telephone service
+  const isPhoneService = billingCodes?.some((bc: any) => 
+    bc.code === "98966" || bc.code === "98967" || bc.code === "98968"
+  )
+  
+  if (isPhoneService && phoneDuration !== undefined) {
+    return phoneDuration
+  }
+  
+  // Check for crisis add-on (90840) with custom duration
+  if (billingCodes?.some((bc: any) => bc.code === "90840") && crisisSessionDuration) {
+    return crisisSessionDuration
+  }
+  
+  // Default to 60 minutes for standard sessions
+  return 60
 }
 
 // Extract IP address from encrypted form metadata token
@@ -329,12 +378,12 @@ function buildSaveNoteRequest(note: any, session: any, client: any, encryptedFor
         SupervisorId: null,
         SupervisorDisplayName: "",
         SupervisorRole: 0,
-        SessionDuration: content.billingCodes?.some((bc: any) => bc.code === "90840") && content.crisisSessionDuration ? content.crisisSessionDuration : 60,
+        SessionDuration: getSessionDuration(content.billingCodes, content.phoneDuration, content.crisisSessionDuration),
         LocationType: 1,
         LocationId: LOCATION_ID,
         ParticipantsType: 1,
         OtherParticipants: "",
-        ServiceCodes: buildServiceCodes(content.billingCodes)
+        ServiceCodes: buildServiceCodes(content.billingCodes, content.phoneDuration)
       },
       FormElementValues: formElementValues
     },

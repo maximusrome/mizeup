@@ -109,10 +109,24 @@ const QUESTIONS = [
   { id: 'q2', text: 'Did the caregiver\'s emotions/behavior interfere with implementation of the treatment plan?', answer: false, code: '90785', note: 'Caregiver emotions and behavior interfered with implementation of the treatment plan, complicating delivery of care and increasing session intensity. This required repeated de-escalation, psychoeducation, and facilitation beyond standard psychotherapy to align on the treatment plan and achieve therapeutic progress.' },
   { id: 'q3', text: 'Was there evidence/disclosure of a sentinel event and mandated report to a third party (e.g., abuse or neglect with report to state agency) with initiation of discussion of the sentinel event and/or report with patient and other visit participants?', answer: false, code: '90785', note: 'Evidence/disclosure of a sentinel event and mandated report to a third party with initiation of discussion of the event/report with patient and other participants complicated delivery of care, increasing session intensity. This required additional safety assessment, coordination, and de-escalation beyond standard psychotherapy to implement the treatment plan and achieve therapeutic progress.' },
   { id: 'q4', text: 'Did you use play equipment, physical devices, interpreter, or translator to overcome significant language barriers?', answer: false, code: '90785', note: 'The need to use play equipment, physical devices, interpreter, or translator to overcome significant language barriers complicated delivery of care, increasing session intensity. This required adaptive techniques, such as symbolic interpretation and facilitated communication, beyond standard psychotherapy to implement the treatment plan and achieve therapeutic progress.' },
-  { id: 'q5', text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?', answer: false, code: '99050', note: 'Session with {clientName} on {date} at {time} was provided in the office outside of regularly scheduled office hours (Monday–Friday 9:00 AM – 5:00 PM) or days when the office is normally closed, to accommodate the patient’s scheduling constraints and/or clinical needs.' },
+  { id: 'q5', text: 'Was the service provided in the office at times other than regularly scheduled office hours, or days when the office is normally closed (e.g., holidays, Saturday or Sunday), in addition to basic service?', answer: false, code: '99050', note: 'Session with {clientName} on {date} at {time} was provided in the office outside of regularly scheduled office hours (Monday–Friday 9:00 AM – 5:00 PM) or days when the office is normally closed, to accommodate the patient\'s scheduling constraints and/or clinical needs.' },
   { id: 'q6', text: 'Was the presenting problem typically life-threatening or complex and require immediate attention to a patient in high distress?', answer: false, code: '90839', note: 'This session addressed a presenting problem that was life-threatening or complex, requiring immediate attention to a patient in high distress. Crisis intervention techniques were employed to stabilize the patient and ensure safety.' },
-  { id: 'q7', text: 'Was the face-to-face crisis psychotherapy total time greater than 75 minutes?', answer: false, code: '90840', note: 'The face-to-face crisis psychotherapy session exceeded 75 minutes in duration, requiring extended time to adequately address the crisis situation and ensure patient stabilization.' }
+  { id: 'q7', text: 'Was the face-to-face crisis psychotherapy total time greater than 75 minutes?', answer: false, code: '90840', note: 'The face-to-face crisis psychotherapy session exceeded 75 minutes in duration, requiring extended time to adequately address the crisis situation and ensure patient stabilization.' },
+  { id: 'q8', text: 'Did the client, parent, or guardian initiate a phone call with you to discuss therapy-related topics?', answer: false, code: '98966', note: '{clientName} initiated a telephone call on {date} that lasted {phoneDuration} minutes. This call was necessary to address clinical concerns and discuss therapy-related matters requiring assessment and management. Service was not related to a prior visit within 7 days and did not result in a visit or procedure within 24 hours.' },
+  { id: 'q9', text: 'Did you provide at least 20 minutes of behavioral health care management services this calendar month?', answer: false, code: '99484', note: 'Behavioral health care management services provided to {clientName} on {date}. At least 20 minutes of clinical staff time was directed toward care coordination, monitoring, and management of behavioral health conditions during this calendar month.' }
 ]
+
+// Helper function to get phone service code and rate based on duration
+const getPhoneServiceInfo = (minutes: number) => {
+  if (minutes >= 5 && minutes <= 10) {
+    return { code: '98966', rate: '$11.48', min: 5, max: 10 }
+  } else if (minutes >= 11 && minutes <= 20) {
+    return { code: '98967', rate: '$21.01', min: 11, max: 20 }
+  } else if (minutes >= 21 && minutes <= 30) {
+    return { code: '98968', rate: '$28.69', min: 21, max: 30 }
+  }
+  return { code: '98966', rate: '$11.48', min: 5, max: 10 } // default
+}
 
 // Helper functions
 const formatTime = (time: string) => {
@@ -202,9 +216,23 @@ export default function SessionProgressNotePage() {
   const [treatmentObjectivesDetailed, setTreatmentObjectivesDetailed] = useState<{ Id: number; TreatmentObjectiveDescription: string }[]>([])
   const [additionalDiagnoses, setAdditionalDiagnoses] = useState<{ code: string; description: string }[]>([])
   const [crisisSessionDuration, setCrisisSessionDuration] = useState<number>(75)
+  const [phoneDuration, setPhoneDuration] = useState<number>(5)
   const didAutoPullRef = useRef(false)
 
   const serviceCodes = useMemo(() => {
+    // Check if telephone service is used (replaces standard codes)
+    const phoneQuestion = questions.find(q => q.id === 'q8' && q.answer)
+    if (phoneQuestion) {
+      const phoneInfo = getPhoneServiceInfo(phoneDuration)
+      return phoneInfo.code
+    }
+    
+    // Check if behavioral health care management is used (replaces standard codes)
+    const isCareManagement = questions.some(q => q.code === '99484' && q.answer)
+    if (isCareManagement) {
+      return '99484'
+    }
+    
     // Check if crisis psychotherapy is used
     const isCrisis = questions.some(q => q.code === '90839' && q.answer)
     const codes = [isCrisis ? '90839' : '90837']
@@ -212,7 +240,7 @@ export default function SessionProgressNotePage() {
     if (questions.some(q => q.code === '99050' && q.answer)) codes.push('+99050')
     if (questions.some(q => q.code === '90840' && q.answer)) codes.push('+90840')
     return codes.join(' ')
-  }, [questions])
+  }, [questions, phoneDuration])
 
   const subjectiveBaseRef = useRef('')
   const planBaseRef = useRef('')
@@ -321,6 +349,11 @@ export default function SessionProgressNotePage() {
           setCrisisSessionDuration(content.crisisSessionDuration)
         }
         
+        // Load phone duration
+        if (content.phoneDuration) {
+          setPhoneDuration(content.phoneDuration)
+        }
+        
         // Load diagnosis
         if (content.diagnosis) {
           setDiagnosisCode(content.diagnosis.code || '')
@@ -408,6 +441,7 @@ export default function SessionProgressNotePage() {
       .replace('{clientName}', clientName)
       .replace('{date}', formattedDate)
       .replace('{time}', formattedTime)
+      .replace('{phoneDuration}', phoneDuration.toString())
   }
 
   const toggle = (id: string) => {
@@ -531,10 +565,17 @@ export default function SessionProgressNotePage() {
         .replace('{clientName}', clientName)
         .replace('{date}', formattedDate)
         .replace('{time}', formattedTime)
+        .replace('{phoneDuration}', phoneDuration.toString())
     }
     
     const content: ProgressNoteContent = {
-      billingCodes: selectedBillingCodes.map(q => ({ code: q.code, text: formatBillingCodeNote(q.note) })),
+      billingCodes: selectedBillingCodes.map(q => {
+        // For telephone services, use the dynamic code based on duration selection
+        const code = q.id === 'q8' 
+          ? getPhoneServiceInfo(phoneDuration).code
+          : q.code
+        return { code, text: formatBillingCodeNote(q.note) }
+      }),
       diagnosis: diagnosisCode || diagnosisDescription ? { code: diagnosisCode, description: diagnosisDescription } : undefined,
       diagnoses: additionalDiagnoses.length > 0 ? additionalDiagnoses : undefined,
       treatmentObjectivesDetailed: treatmentObjectivesDetailed.length > 0 ? treatmentObjectivesDetailed : undefined,
@@ -551,7 +592,8 @@ export default function SessionProgressNotePage() {
       assessment: assessment || undefined,
       plan: plan || undefined,
       recommendation: { type: recommendation, prescribedFrequency },
-      crisisSessionDuration: selectedBillingCodes.some(q => q.code === '90840') ? crisisSessionDuration : undefined
+      crisisSessionDuration: selectedBillingCodes.some(q => q.code === '90840') ? crisisSessionDuration : undefined,
+      phoneDuration: selectedBillingCodes.some(q => q.id === 'q8') ? phoneDuration : undefined
     }
     
     await fetch(`/api/notes/${sessionId}`, {
@@ -888,7 +930,7 @@ export default function SessionProgressNotePage() {
                   {/* Crisis Psychotherapy Add-on */}
                   <div className="border rounded-lg overflow-hidden">
                     <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
-                      <span className="font-medium text-sm">Crisis Psychotherapy Extended +90840</span>
+                      <span className="font-medium text-sm">Crisis Psychotherapy Add-on +90840</span>
                       <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
                         +$63.21
                       </span>
@@ -917,6 +959,122 @@ export default function SessionProgressNotePage() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Behavioral Health Care Management */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
+                      <span className="font-medium text-sm">Behavioral Health Care Management 99484</span>
+                      <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
+                        $48.93
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {questions.filter(q => q.code === '99484').map(q => (
+                        <div key={q.id} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
+                          <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                            {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                          </div>
+                          <span className="text-sm flex-1">{q.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Telephone Services */}
+                  <div className="border rounded-lg overflow-hidden">
+                    <div className="px-4 py-3 bg-muted/50 flex items-center justify-between border-b">
+                      <span className="font-medium text-sm">
+                        Telephone Services {questions.find(q => q.id === 'q8')?.answer 
+                          ? getPhoneServiceInfo(phoneDuration).code 
+                          : '98966-98968'}
+                      </span>
+                      <span className="bg-success/10 text-success border border-success/30 px-3 py-1 rounded-full text-xs font-bold">
+                        {questions.find(q => q.id === 'q8')?.answer 
+                          ? getPhoneServiceInfo(phoneDuration).rate 
+                          : '$11.48 - $28.69'}
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-2">
+                      {questions.filter(q => q.id === 'q8').map(q => {
+                        const phoneInfo = getPhoneServiceInfo(phoneDuration)
+                        return (
+                          <div key={q.id}>
+                            <div className="flex items-start gap-3 cursor-pointer p-3 hover:bg-muted/30 rounded" onClick={() => toggle(q.id)}>
+                              <div className={`mt-1 w-4 h-4 rounded-full border-2 flex items-center justify-center ${q.answer ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                                {q.answer && <div className="w-2 h-2 rounded-full bg-white"></div>}
+                              </div>
+                              <span className="text-sm flex-1">{q.text}</span>
+                            </div>
+                            {q.answer && (
+                              <div className="ml-7 mt-3">
+                                <div className="flex items-center gap-3">
+                                  <Label className="text-sm font-medium">Call duration (minutes):</Label>
+                                  <Input
+                                    type="number"
+                                    min="5"
+                                    max="30"
+                                    value={phoneDuration}
+                                    onChange={(e) => {
+                                      const value = parseInt(e.target.value) || 5
+                                      const clamped = Math.max(5, Math.min(30, value))
+                                      setPhoneDuration(clamped)
+                                      
+                                      // Update assessment text with new duration
+                                      if (session) {
+                                        const phoneQ = questions.find(x => x.id === 'q8')
+                                        if (phoneQ?.answer) {
+                                          const fullName = session.clients?.name || 'patient'
+                                          const clientName = fullName.split(' ')[0]
+                                          const date = new Date(`${session.date}T00:00:00`)
+                                          const formattedDate = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+                                          
+                                          // Escape special regex characters in client name and date
+                                          const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                                          const escapedClientName = escapeRegex(clientName)
+                                          const escapedDate = escapeRegex(formattedDate)
+                                          
+                                          // Pattern to find phone call text with any duration
+                                          const phonePattern = new RegExp(
+                                            `${escapedClientName} initiated a telephone call on ${escapedDate} that lasted \\d+ minutes`
+                                          )
+                                          
+                                          setAssessment(curr => {
+                                            if (phonePattern.test(curr)) {
+                                              return curr.replace(
+                                                phonePattern,
+                                                `${clientName} initiated a telephone call on ${formattedDate} that lasted ${clamped} minutes`
+                                              )
+                                            }
+                                            return curr
+                                          })
+                                        }
+                                      }
+                                    }}
+                                    className="w-24"
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                  <div className="flex gap-4 text-xs">
+                                    <div className={`flex flex-col px-2 py-1 rounded ${phoneInfo.code === '98966' ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}>
+                                      <span>5-10 min</span>
+                                      <span>$11.48</span>
+                                    </div>
+                                    <div className={`flex flex-col px-2 py-1 rounded ${phoneInfo.code === '98967' ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}>
+                                      <span>11-20 min</span>
+                                      <span>$21.01</span>
+                                    </div>
+                                    <div className={`flex flex-col px-2 py-1 rounded ${phoneInfo.code === '98968' ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}>
+                                      <span>21-30 min</span>
+                                      <span>$28.69</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
