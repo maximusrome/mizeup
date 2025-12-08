@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, Fragment } from 'react'
+import { useState, Fragment, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, DollarSign, AlertCircle, Calendar, CheckCircle2 } from 'lucide-react'
+import { RefreshCw, AlertCircle, Calendar } from 'lucide-react'
 
 interface ScheduleSession {
   date: string
-  time: string
   startDateTime: string
   clientName: string
 }
@@ -28,6 +27,7 @@ interface CombinedRow {
   hasSchedule: boolean
   hasBilling: boolean
   isDirectPay?: boolean
+  noteStatus?: 'Note Synced' | 'Needs Note'
 }
 
 interface ReportData {
@@ -38,9 +38,6 @@ interface ReportData {
     totalPatientResponsibility: number
     totalScheduledSessions: number
     totalBilledServices: number
-    matchedSessions: number
-    unmatchedSchedule: number
-    unmatchedBilling: number
   }
 }
 
@@ -49,12 +46,13 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchReport = async () => {
+  const fetchReport = async (refresh = false) => {
     setLoading(true)
     setError(null)
 
     try {
-      const response = await fetch('/api/therapynotes/report')
+      const url = refresh ? '/api/therapynotes/report?refresh=true' : '/api/therapynotes/report'
+      const response = await fetch(url)
       const result = await response.json()
 
       if (!response.ok) {
@@ -68,6 +66,11 @@ export default function ReportPage() {
       setLoading(false)
     }
   }
+
+  // Load data on mount
+  useEffect(() => {
+    fetchReport(false)
+  }, [])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -89,12 +92,13 @@ export default function ReportPage() {
             </p>
           </div>
           <Button 
-            onClick={fetchReport} 
+            onClick={() => fetchReport(true)} 
             disabled={loading}
-            className="flex items-center gap-2"
+            variant="ghost"
+            size="icon"
+            title="Refresh Data"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Loading...' : 'Refresh Data'}
           </Button>
         </div>
 
@@ -161,7 +165,7 @@ export default function ReportPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Insurance Paid</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{formatCurrency(data.totals.totalInsurancePaid)}</div>
+                  <div className="text-2xl font-bold text-success">{formatCurrency(data.totals.totalInsurancePaid)}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -169,68 +173,26 @@ export default function ReportPage() {
                   <CardTitle className="text-sm font-medium text-muted-foreground">Patient Resp.</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">{formatCurrency(data.totals.totalPatientResponsibility)}</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Match Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="py-4 text-center">
-                  <div className="flex items-center justify-center gap-2 text-green-700">
-                    <CheckCircle2 className="h-5 w-5" />
-                    <span className="text-lg font-semibold">{data.totals.matchedSessions}</span>
-                  </div>
-                  <p className="text-sm text-green-600 mt-1">Matched Sessions</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-orange-50 border-orange-200">
-                <CardContent className="py-4 text-center">
-                  <div className="flex items-center justify-center gap-2 text-orange-700">
-                    <Calendar className="h-5 w-5" />
-                    <span className="text-lg font-semibold">{data.totals.unmatchedSchedule}</span>
-                  </div>
-                  <p className="text-sm text-orange-600 mt-1">Schedule Only (No Billing)</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-purple-50 border-purple-200">
-                <CardContent className="py-4 text-center">
-                  <div className="flex items-center justify-center gap-2 text-purple-700">
-                    <DollarSign className="h-5 w-5" />
-                    <span className="text-lg font-semibold">{data.totals.unmatchedBilling}</span>
-                  </div>
-                  <p className="text-sm text-purple-600 mt-1">Billing Only (No Schedule)</p>
+                  <div className="text-2xl font-bold text-info">{formatCurrency(data.totals.totalPatientResponsibility)}</div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Combined Table */}
             <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Session Details</CardTitle>
-              </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
-                        <th colSpan={3} className="text-left py-2 px-4 font-semibold text-muted-foreground border-r">
-                          Schedule (TherapyNotes Calendar)
-                        </th>
-                        <th colSpan={5} className="text-left py-2 px-4 font-semibold text-muted-foreground">
-                          Billing (ERA Data)
-                        </th>
-                      </tr>
                       <tr className="border-b bg-muted/30">
                         <th className="text-left py-2 px-4 font-medium">Date</th>
-                        <th className="text-left py-2 px-4 font-medium">Time</th>
-                        <th className="text-left py-2 px-4 font-medium border-r">Client</th>
+                        <th className="text-left py-2 px-4 font-medium">Client</th>
                         <th className="text-left py-2 px-4 font-medium">Code</th>
+                        <th className="text-left py-2 px-4 font-medium">Payer</th>
                         <th className="text-right py-2 px-4 font-medium">Charged</th>
                         <th className="text-right py-2 px-4 font-medium">Ins. Paid</th>
                         <th className="text-right py-2 px-4 font-medium">Patient</th>
-                        <th className="text-left py-2 px-4 font-medium">Payer</th>
+                        <th className="text-left py-2 px-4 font-medium">Status</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -250,12 +212,12 @@ export default function ReportPage() {
                               {/* First row with schedule data */}
                               <tr
                                 className={`border-b hover:bg-muted/30 ${
-                                  !row.hasSchedule ? 'bg-purple-50/50' : 
-                                  !row.hasBilling ? 'bg-orange-50/50' : ''
+                                  !row.hasSchedule ? 'bg-muted/20' : 
+                                  !row.hasBilling ? 'bg-warning-light/20' : ''
                                 }`}
                               >
                                 {/* Schedule columns - rowSpan for multiple billing lines */}
-                                <td className="py-3 px-4" rowSpan={rowSpan}>
+                                <td className="py-3 px-4 text-sm" rowSpan={rowSpan}>
                                   {row.schedule ? (
                                     <div className="font-medium">{row.schedule.date}</div>
                                   ) : row.billing[0] ? (
@@ -264,14 +226,7 @@ export default function ReportPage() {
                                     <span className="text-muted-foreground italic">—</span>
                                   )}
                                 </td>
-                                <td className="py-3 px-4" rowSpan={rowSpan}>
-                                  {row.schedule ? (
-                                    <div className="text-sm font-medium text-blue-600">{row.schedule.time}</div>
-                                  ) : (
-                                    <span className="text-muted-foreground italic text-xs">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 border-r" rowSpan={rowSpan}>
+                                <td className="py-3 px-4 text-sm" rowSpan={rowSpan}>
                                   {row.schedule ? row.schedule.clientName : (
                                     row.billing[0] ? row.billing[0].clientName : (
                                       <span className="text-muted-foreground italic">—</span>
@@ -282,25 +237,41 @@ export default function ReportPage() {
                                 {/* First billing row or empty */}
                                 {row.billing[0] ? (
                                   <>
-                                    <td className="py-3 px-4">{row.billing[0].serviceCode}</td>
-                                    <td className="py-3 px-4 text-right">{formatCurrency(row.billing[0].chargedAmount)}</td>
-                                    <td className="py-3 px-4 text-right text-green-600">{formatCurrency(row.billing[0].insurancePaid)}</td>
-                                    <td className="py-3 px-4 text-right text-blue-600">{formatCurrency(row.billing[0].patientResponsibility)}</td>
-                                    <td className="py-3 px-4 text-xs text-muted-foreground max-w-[150px] truncate" title={row.billing[0].payerName}>
+                                    <td className="py-3 px-4 text-sm">{row.billing[0].serviceCode}</td>
+                                    <td className="py-3 px-4 text-sm text-muted-foreground max-w-[150px] truncate" title={row.billing[0].payerName}>
                                       {row.billing[0].payerName}
+                                    </td>
+                                    <td className="py-3 px-4 text-right text-sm">{formatCurrency(row.billing[0].chargedAmount)}</td>
+                                    <td className="py-3 px-4 text-right text-sm text-success">{formatCurrency(row.billing[0].insurancePaid)}</td>
+                                    <td className="py-3 px-4 text-right text-sm text-info">{formatCurrency(row.billing[0].patientResponsibility)}</td>
+                                    <td className="py-3 px-4" rowSpan={rowSpan}>
+                                      {row.noteStatus === 'Note Synced' ? (
+                                        <span className="text-success text-xs">Note Synced</span>
+                                      ) : (
+                                        <span className="text-destructive text-xs">Needs Note</span>
+                                      )}
                                     </td>
                                   </>
                                 ) : (
                                   <>
-                                    <td className="py-3 px-4 text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-muted-foreground">
+                                    <td className="py-3 px-4 text-sm text-muted-foreground italic">—</td>
+                                    <td className="py-3 px-4 text-sm text-muted-foreground">
                                       {row.isDirectPay ? (
-                                        <span className="text-blue-600 font-medium">Direct</span>
+                                        <span>Direct</span>
                                       ) : (
                                         <span className="italic">—</span>
+                                      )}
+                                    </td>
+                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
+                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
+                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
+                                    <td className="py-3 px-4" rowSpan={rowSpan}>
+                                      {row.noteStatus === 'Note Synced' ? (
+                                        <span className="text-success text-xs">Note Synced</span>
+                                      ) : row.noteStatus ? (
+                                        <span className="text-destructive text-xs">Needs Note</span>
+                                      ) : (
+                                        <span className="text-muted-foreground italic">—</span>
                                       )}
                                     </td>
                                   </>
@@ -313,12 +284,15 @@ export default function ReportPage() {
                                   key={`row-${index}-${billingIdx + 1}`} 
                                   className="border-b hover:bg-muted/30"
                                 >
-                                  <td className="py-2 px-4 text-xs text-muted-foreground">
+                                  <td className="py-2 px-4 text-sm text-muted-foreground">
                                     + {billing.serviceCode}
                                   </td>
+                                  <td className="py-2 px-4 text-sm text-muted-foreground max-w-[150px] truncate" title={billing.payerName}>
+                                    {billing.payerName}
+                                  </td>
                                   <td className="py-2 px-4 text-right text-sm">{formatCurrency(billing.chargedAmount)}</td>
-                                  <td className="py-2 px-4 text-right text-sm text-green-600">{formatCurrency(billing.insurancePaid)}</td>
-                                  <td className="py-2 px-4 text-right text-sm text-blue-600">{formatCurrency(billing.patientResponsibility)}</td>
+                                  <td className="py-2 px-4 text-right text-sm text-success">{formatCurrency(billing.insurancePaid)}</td>
+                                  <td className="py-2 px-4 text-right text-sm text-info">{formatCurrency(billing.patientResponsibility)}</td>
                                   <td className="py-2 px-4"></td>
                                 </tr>
                               ))}
@@ -330,13 +304,14 @@ export default function ReportPage() {
                     {data.rows.length > 0 && (
                       <tfoot>
                         <tr className="bg-muted/50 font-medium">
-                          <td className="py-3 px-4 border-r" colSpan={3}>
+                          <td className="py-3 px-4" colSpan={2}>
                             {data.totals.totalScheduledSessions} sessions / {data.totals.totalBilledServices} services
                           </td>
                           <td className="py-3 px-4"></td>
-                          <td className="py-3 px-4 text-right">{formatCurrency(data.totals.totalCharged)}</td>
-                          <td className="py-3 px-4 text-right text-green-600">{formatCurrency(data.totals.totalInsurancePaid)}</td>
-                          <td className="py-3 px-4 text-right text-blue-600">{formatCurrency(data.totals.totalPatientResponsibility)}</td>
+                          <td className="py-3 px-4"></td>
+                          <td className="py-3 px-4 text-right text-sm">{formatCurrency(data.totals.totalCharged)}</td>
+                          <td className="py-3 px-4 text-right text-sm text-success">{formatCurrency(data.totals.totalInsurancePaid)}</td>
+                          <td className="py-3 px-4 text-right text-sm text-info">{formatCurrency(data.totals.totalPatientResponsibility)}</td>
                           <td className="py-3 px-4"></td>
                         </tr>
                       </tfoot>
