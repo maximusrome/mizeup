@@ -1,5 +1,33 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+
+type SupabaseClientType = Awaited<ReturnType<typeof createClient>>
+
+interface ReportRecord {
+  service_date: string
+  client_name: string
+  service_code: string
+  payer_name: string | null
+  charged_amount: string | number
+  insurance_paid: string | number
+  patient_responsibility: string | number
+}
+
+type SessionRecord = {
+  id: string
+  date: string
+  clients: { name: string } | null
+}
+
+interface NoteRecord {
+  session_id: string
+  synced_to_therapynotes: boolean
+}
+
+interface SessionWithNote {
+  date: string
+  clientName: string
+}
 
 const TN_HEADERS = {
   'Content-Type': 'application/x-www-form-urlencoded',
@@ -77,7 +105,6 @@ interface SessionData {
 
 interface ScheduleSession {
   date: string // MM/DD/YYYY
-  time: string // HH:MM AM/PM
   startDateTime: string // ISO for sorting
   clientName: string
 }
@@ -88,6 +115,7 @@ interface CombinedRow {
   hasSchedule: boolean
   hasBilling: boolean
   isDirectPay?: boolean
+  noteStatus?: 'Note Synced' | 'Needs Note'
 }
 
 // Map of normalized client names to direct pay status
@@ -231,13 +259,6 @@ async function fetchScheduleMonth(
     // Format date as MM/DD/YYYY
     const date = `${dateObj.getMonth() + 1}/${dateObj.getDate()}/${dateObj.getFullYear()}`
     
-    // Format time as HH:MM AM/PM
-    let hours = dateObj.getHours()
-    const minutes = String(dateObj.getMinutes()).padStart(2, '0')
-    const ampm = hours >= 12 ? 'PM' : 'AM'
-    hours = hours % 12 || 12
-    const time = `${hours}:${minutes} ${ampm}`
-    
     // Build patient name - decode HTML entities in raw fields first
     const firstName = decodeHtmlEntities(patient.FirstName || '')
     const lastName = decodeHtmlEntities(patient.LastName || '')
@@ -257,7 +278,6 @@ async function fetchScheduleMonth(
     
     sessions.push({
       date,
-      time,
       startDateTime,
       clientName
     })
@@ -752,6 +772,181 @@ async function fetchDirectPayMap(cookies: string): Promise<DirectPayMap> {
   return directPayMap
 }
 
+// Save billing data to database
+async function saveBillingDataToDB(
+  supabase: SupabaseClientType,
+  therapistId: string,
+  billingSessions: SessionData[],
+  startDate: Date,
+  endDate: Date
+): Promise<void> {
+  // Delete old data for this date range
+  const startDateStr = startDate.toISOString().split('T')[0]
+  const endDateStr = endDate.toISOString().split('T')[0]
+  
+  const { error: deleteError } = await supabase
+    .from('report')
+    .delete()
+    .eq('therapist_id', therapistId)
+    .gte('service_date', startDateStr)
+    .lte('service_date', endDateStr)
+
+  if (deleteError) {
+    console.error('Error deleting old billing data:', deleteError)
+    // Don't throw - continue with insert even if delete fails
+  }
+
+  // Insert new data
+  const records = billingSessions.map(session => {
+    // Convert MM/DD/YYYY to YYYY-MM-DD
+    const [month, day, year] = session.serviceDate.split('/')
+    const serviceDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    
+    return {
+      therapist_id: therapistId,
+      service_date: serviceDate,
+      client_name: session.clientName,
+      service_code: session.serviceCode,
+      payer_name: session.payerName,
+      charged_amount: session.chargedAmount,
+      insurance_paid: session.insurancePaid,
+      patient_responsibility: session.patientResponsibility,
+      last_synced_at: new Date().toISOString()
+    }
+  })
+
+  if (records.length > 0) {
+    const { error } = await supabase
+      .from('report')
+      .insert(records)
+
+    if (error) {
+      console.error('Error saving billing data:', error)
+      throw new Error(`Failed to save billing data: ${error.message}`)
+    }
+  }
+}
+
+// Read billing data from database
+async function getBillingDataFromDB(
+  supabase: SupabaseClientType,
+  therapistId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<SessionData[]> {
+  const startDateStr = startDate.toISOString().split('T')[0]
+  const endDateStr = endDate.toISOString().split('T')[0]
+
+  const { data, error } = await supabase
+    .from('report')
+    .select('*')
+    .eq('therapist_id', therapistId)
+    .gte('service_date', startDateStr)
+    .lte('service_date', endDateStr)
+    .order('service_date', { ascending: true })
+
+  if (error) {
+    console.error('Error reading billing data:', error)
+    throw new Error(`Failed to read billing data: ${error.message}`)
+  }
+
+  if (!data || data.length === 0) {
+    return []
+  }
+
+  // Transform database records back to SessionData format
+  return data.map((record: ReportRecord) => {
+    // Convert YYYY-MM-DD back to MM/DD/YYYY
+    const [year, month, day] = record.service_date.split('-')
+    const serviceDate = `${parseInt(month)}/${parseInt(day)}/${year}`
+
+    return {
+      serviceDate,
+      clientName: record.client_name,
+      serviceCode: record.service_code,
+      chargedAmount: typeof record.charged_amount === 'string' 
+        ? parseFloat(record.charged_amount) 
+        : record.charged_amount,
+      insurancePaid: typeof record.insurance_paid === 'string'
+        ? parseFloat(record.insurance_paid)
+        : record.insurance_paid,
+      patientResponsibility: typeof record.patient_responsibility === 'string'
+        ? parseFloat(record.patient_responsibility)
+        : record.patient_responsibility,
+      payerName: record.payer_name || ''
+    }
+  })
+}
+
+// Get note status for sessions from mizeup database
+async function getNoteStatusForSessions(
+  supabase: SupabaseClientType,
+  therapistId: string,
+  rows: CombinedRow[]
+): Promise<void> {
+  // Get all unique dates from rows
+  const dates = new Set<string>()
+  rows.forEach(row => {
+    const date = row.schedule?.date || row.billing[0]?.serviceDate
+    if (date) {
+      // Convert MM/DD/YYYY to YYYY-MM-DD for database query
+      const [month, day, year] = date.split('/')
+      dates.add(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
+    }
+  })
+
+  if (dates.size === 0) return
+
+  // Fetch sessions and notes from mizeup database
+  const { data: sessions } = await supabase
+    .from('sessions')
+    .select('id, date, clients:client_id(name)')
+    .eq('therapist_id', therapistId)
+    .in('date', Array.from(dates)) as { data: SessionRecord[] | null }
+
+  if (!sessions || sessions.length === 0) return
+
+  const sessionIds = sessions.map((s: SessionRecord) => s.id)
+  const { data: notes } = await supabase
+    .from('progress_notes')
+    .select('session_id, synced_to_therapynotes')
+    .eq('therapist_id', therapistId)
+    .in('session_id', sessionIds)
+
+  // Create map of session_id -> has synced note
+  const syncedNotes = new Set(
+    (notes || [])
+      .filter((n: NoteRecord) => n.synced_to_therapynotes)
+      .map((n: NoteRecord) => n.session_id)
+  )
+
+  // Create array of sessions with notes (for fuzzy matching)
+  const sessionsWithNotes: SessionWithNote[] = sessions
+    .filter((session) => syncedNotes.has(session.id))
+    .map((session) => ({
+      date: session.date,
+      clientName: session.clients?.name || ''
+    }))
+
+  // Add status to rows using fuzzy name matching
+  rows.forEach(row => {
+    const date = row.schedule?.date || row.billing[0]?.serviceDate
+    const clientName = row.schedule?.clientName || row.billing[0]?.clientName
+    if (date && clientName) {
+      // Convert MM/DD/YYYY to YYYY-MM-DD for matching
+      const [month, day, year] = date.split('/')
+      const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      
+      // Find matching session by date + fuzzy name match
+      const matchingSession = sessionsWithNotes.find((session: SessionWithNote) => 
+        session.date === dbDate && namesMatch(session.clientName, clientName)
+      )
+      
+      row.noteStatus = matchingSession ? 'Note Synced' : 'Needs Note'
+    }
+  })
+}
+
 // Match schedule sessions to billing data
 function matchSessionsToBilling(
   scheduleSessions: ScheduleSession[],
@@ -817,7 +1012,7 @@ function matchSessionsToBilling(
   return rows
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -826,26 +1021,9 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: therapist, error } = await supabase
-      .from('therapists')
-      .select('therapynotes_username, therapynotes_password, therapynotes_practice_code')
-      .eq('id', user.id)
-      .single()
-
-    if (error || !therapist?.therapynotes_username || !therapist?.therapynotes_password || !therapist?.therapynotes_practice_code) {
-      return NextResponse.json({ 
-        error: 'TherapyNotes credentials not configured',
-        message: 'Please configure your TherapyNotes credentials in Account settings'
-      }, { status: 400 })
-    }
-
-    const { accessToken, sessionId } = await loginToTherapyNotes(
-      therapist.therapynotes_username,
-      therapist.therapynotes_password,
-      therapist.therapynotes_practice_code
-    )
-
-    const cookies = `${BASE_COOKIES}; access-token=${accessToken}; ASP.NET_SessionId=${sessionId}; practicecode=${therapist.therapynotes_practice_code}`
+    // Check if refresh is requested
+    const { searchParams } = new URL(req.url)
+    const shouldRefresh = searchParams.get('refresh') === 'true'
 
     // Set date range: last 90 days
     const endDate = new Date()
@@ -853,52 +1031,105 @@ export async function GET() {
     const startDate = new Date()
     startDate.setDate(startDate.getDate() - 90)
     startDate.setHours(0, 0, 0, 0)
-    
-    // Get clinician ID for schedule fetch
-    const clinicianId = await getClinicianId(cookies)
-    
-    // Fetch schedule sessions
-    const scheduleSessions = await fetchSchedule(cookies, clinicianId)
 
-    // Fetch patient list to identify direct pay clients
-    const directPayMap = await fetchDirectPayMap(cookies)
+    let validBillingSessions: SessionData[] = []
+    let scheduleSessions: ScheduleSession[] = []
+    let directPayMap: DirectPayMap = {}
 
-    // Fetch ERA billing data
-    const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
-    const eras = await fetchERAs(cookies, formatDate(startDate), formatDate(endDate))
+    // If refresh requested, fetch from TherapyNotes and save to DB
+    if (shouldRefresh) {
+      const { data: therapist, error } = await supabase
+        .from('therapists')
+        .select('therapynotes_username, therapynotes_password, therapynotes_practice_code')
+        .eq('id', user.id)
+        .single()
 
-    const allBillingSessions: SessionData[] = []
-    
-    for (const era of eras) {
-      try {
-        const sessions = await fetchERADetails(era.ID, cookies)
-        if (sessions.length > 0) {
-          allBillingSessions.push(...sessions)
+      if (error || !therapist?.therapynotes_username || !therapist?.therapynotes_password || !therapist?.therapynotes_practice_code) {
+        return NextResponse.json({ 
+          error: 'TherapyNotes credentials not configured',
+          message: 'Please configure your TherapyNotes credentials in Account settings'
+        }, { status: 400 })
+      }
+
+      const { accessToken, sessionId } = await loginToTherapyNotes(
+        therapist.therapynotes_username,
+        therapist.therapynotes_password,
+        therapist.therapynotes_practice_code
+      )
+
+      const cookies = `${BASE_COOKIES}; access-token=${accessToken}; ASP.NET_SessionId=${sessionId}; practicecode=${therapist.therapynotes_practice_code}`
+      
+      // Get clinician ID for schedule fetch
+      const clinicianId = await getClinicianId(cookies)
+      
+      // Fetch schedule sessions
+      scheduleSessions = await fetchSchedule(cookies, clinicianId)
+
+      // Fetch patient list to identify direct pay clients
+      directPayMap = await fetchDirectPayMap(cookies)
+
+      // Fetch ERA billing data
+      const formatDate = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
+      const eras = await fetchERAs(cookies, formatDate(startDate), formatDate(endDate))
+
+      const allBillingSessions: SessionData[] = []
+      
+      for (const era of eras) {
+        try {
+          const sessions = await fetchERADetails(era.ID, cookies)
+          if (sessions.length > 0) {
+            allBillingSessions.push(...sessions)
+          }
+        } catch (err) {
+          console.error(`Failed to fetch ERA ${era.ID}:`, err)
         }
-      } catch (err) {
-        console.error(`Failed to fetch ERA ${era.ID}:`, err)
+      }
+
+      // Validate billing sessions and filter by service date (last 90 days)
+      validBillingSessions = allBillingSessions.filter(session => {
+        if (!session.clientName || session.clientName.length < 2) return false
+        if (!session.serviceDate || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(session.serviceDate)) return false
+        if (!session.serviceCode || !/^\d{5}$/.test(session.serviceCode)) return false
+        
+        // Filter by service date - only include services within the last 90 days
+        const serviceTimestamp = parseDateToTimestamp(session.serviceDate)
+        if (serviceTimestamp === 0) return false
+        const serviceDateObj = new Date(serviceTimestamp)
+        return serviceDateObj >= startDate && serviceDateObj <= endDate
+      })
+
+      // Save to database
+      await saveBillingDataToDB(supabase, user.id, validBillingSessions, startDate, endDate)
+    } else {
+      // Read from database
+      validBillingSessions = await getBillingDataFromDB(supabase, user.id, startDate, endDate)
+      
+      // For schedule data, we still need to fetch it (or cache it separately)
+      // For now, fetch it but don't save - we can optimize later
+      const { data: therapist } = await supabase
+        .from('therapists')
+        .select('therapynotes_username, therapynotes_password, therapynotes_practice_code')
+        .eq('id', user.id)
+        .single()
+
+      if (therapist?.therapynotes_username && therapist?.therapynotes_password && therapist?.therapynotes_practice_code) {
+        const { accessToken, sessionId } = await loginToTherapyNotes(
+          therapist.therapynotes_username,
+          therapist.therapynotes_password,
+          therapist.therapynotes_practice_code
+        )
+        const cookies = `${BASE_COOKIES}; access-token=${accessToken}; ASP.NET_SessionId=${sessionId}; practicecode=${therapist.therapynotes_practice_code}`
+        const clinicianId = await getClinicianId(cookies)
+        scheduleSessions = await fetchSchedule(cookies, clinicianId)
+        directPayMap = await fetchDirectPayMap(cookies)
       }
     }
-
-    // Validate billing sessions and filter by service date (last 90 days)
-    const validBillingSessions = allBillingSessions.filter(session => {
-      if (!session.clientName || session.clientName.length < 2) return false
-      if (!session.serviceDate || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(session.serviceDate)) return false
-      if (!session.serviceCode || !/^\d{5}$/.test(session.serviceCode)) return false
-      
-      // Filter by service date - only include services within the last 90 days
-      const serviceTimestamp = parseDateToTimestamp(session.serviceDate)
-      if (serviceTimestamp === 0) return false
-      const serviceDateObj = new Date(serviceTimestamp)
-      return serviceDateObj >= startDate && serviceDateObj <= endDate
-    })
 
     // Match schedule to billing
     const combinedRows = matchSessionsToBilling(scheduleSessions, validBillingSessions, directPayMap)
     
-    const matchedCount = combinedRows.filter(r => r.hasSchedule && r.hasBilling).length
-    const unmatchedSchedule = combinedRows.filter(r => r.hasSchedule && !r.hasBilling).length
-    const unmatchedBilling = combinedRows.filter(r => !r.hasSchedule && r.hasBilling).length
+    // Add note status from mizeup database
+    await getNoteStatusForSessions(supabase, user.id, combinedRows)
 
     // Calculate totals
     const totals = {
@@ -906,10 +1137,7 @@ export async function GET() {
       totalInsurancePaid: validBillingSessions.reduce((sum, s) => sum + s.insurancePaid, 0),
       totalPatientResponsibility: validBillingSessions.reduce((sum, s) => sum + s.patientResponsibility, 0),
       totalScheduledSessions: scheduleSessions.length,
-      totalBilledServices: validBillingSessions.length,
-      matchedSessions: matchedCount,
-      unmatchedSchedule,
-      unmatchedBilling
+      totalBilledServices: validBillingSessions.length
     }
 
     return NextResponse.json({ 
