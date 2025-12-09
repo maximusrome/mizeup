@@ -44,6 +44,7 @@ export async function updateSession(request: NextRequest) {
   const isAuthPage = authRoutes.some(route => path.startsWith(route))
   const isHomePage = path === '/'
   const isPublicPage = publicRoutes.some(route => path.startsWith(route))
+  const isRecordingsIngest = path === '/api/recordings/ingest'
 
   // Redirect authenticated users from home/auth pages to calendar
   if (user && (isHomePage || isAuthPage)) {
@@ -51,7 +52,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Redirect unauthenticated users to login (except public pages)
-  if (!user && !isAuthPage && !isHomePage && !isPublicPage) {
+  if (!user && !isAuthPage && !isHomePage && !isPublicPage && !isRecordingsIngest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
