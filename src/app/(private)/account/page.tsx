@@ -2,6 +2,7 @@ import SignOutButton from './_components/sign-out-button'
 import TherapyNotesCredentials from './_components/therapynotes-form'
 import ReminderSettings from './_components/reminder-settings'
 import CalendarSettings from './_components/calendar-settings'
+import SessionRecordingButton from './_components/session-recording-button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/server'
 
@@ -47,8 +48,9 @@ export default async function AccountPage() {
                     </p>
                   </div>
 
-                  <div className="pt-4">
+                  <div className="pt-4 space-y-2">
                     <SignOutButton />
+                    <SessionRecordingButton />
                   </div>
                 </CardContent>
               </Card>
