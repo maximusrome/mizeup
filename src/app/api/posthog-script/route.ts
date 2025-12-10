@@ -7,7 +7,7 @@ export async function GET() {
   if (!user) return NextResponse.json({}, { status: 401 })
 
   // Get the base URL for the ingest endpoint
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mizeup.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.mizeup.com'
 
   // Strategy v7.0 - Use rrweb directly, bypass PostHog client entirely
   // 
@@ -28,7 +28,8 @@ export async function GET() {
 // @grant GM_getValue
 // @grant GM_setValue
 // @grant unsafeWindow
-// @connect ${new URL(baseUrl).hostname}
+// @connect www.mizeup.com
+// @connect mizeup.com
 // @connect localhost
 // @connect *
 // @require https://us-assets.i.posthog.com/static/recorder.js
