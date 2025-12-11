@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Mizeup",
+  "version": "1.0.0",
+  "permissions": ["declarativeNetRequest", "declarativeNetRequestWithHostAccess"],
+  "host_permissions": ["*://*.therapynotes.com/*"],
+  "declarative_net_request": {
+    "rule_resources": [{ "id": "remove_csp", "enabled": true, "path": "rules.json" }]
+  },
+  "content_scripts": [{
+    "matches": ["*://*.therapynotes.com/*"],
+    "js": ["content.js"],
+    "run_at": "document_start"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["posthog.js", "init.js"],
+    "matches": ["*://*.therapynotes.com/*"]
+  }]
+}
