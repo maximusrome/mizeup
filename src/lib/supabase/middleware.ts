@@ -39,7 +39,7 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname
   const authRoutes = ['/login', '/reset-password']
-  const publicRoutes = ['/confirm', '/update-password', '/api/contact', '/api/reminders/tomorrow']
+  const publicRoutes = ['/confirm', '/update-password', '/api/contact', '/api/reminders/tomorrow', '/extension-privacy']
   
   const isAuthPage = authRoutes.some(route => path.startsWith(route))
   const isHomePage = path === '/'
