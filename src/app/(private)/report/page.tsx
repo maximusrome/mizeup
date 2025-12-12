@@ -88,7 +88,7 @@ export default function ReportPage() {
               Session Billing Report
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Schedule sessions matched with ERA billing data (last 90 days)
+              Schedule sessions matched with ERA billing data (current year)
             </p>
           </div>
           <Button 
