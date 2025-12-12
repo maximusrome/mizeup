@@ -3,14 +3,22 @@ import { createClient } from '@/lib/supabase/server'
 
 type SupabaseClientType = Awaited<ReturnType<typeof createClient>>
 
-interface ReportRecord {
-  service_date: string
+interface ERARecord {
+  ID: number
+  [key: string]: unknown
+}
+
+interface ReportDBRecord {
+  therapist_id: string
+  date: string
   client_name: string
-  service_code: string
+  service_code: string | null
   payer_name: string | null
-  charged_amount: string | number
-  insurance_paid: string | number
-  patient_responsibility: string | number
+  charged_amount: number | null
+  insurance_paid: number | null
+  patient_responsibility: number | null
+  note_status: string | null
+  last_synced_at: string
 }
 
 type SessionRecord = {
@@ -223,8 +231,7 @@ async function fetchScheduleMonth(
       requestset: JSON.stringify(requestSet),
       requestedviewname: 'month',
       correlationid: crypto.randomUUID(),
-      tnrac: TN_RAC,
-      tnv: '2025.9.7.80.334985'
+      tnrac: TN_RAC
     }).toString()
   })
   
@@ -286,15 +293,14 @@ async function fetchScheduleMonth(
   return sessions
 }
 
-// Fetch schedule data for the last 90 days
+// Fetch schedule data for the current year
 async function fetchSchedule(cookies: string, clinicianId: number): Promise<ScheduleSession[]> {
   const now = new Date()
   const allSessions: ScheduleSession[] = []
   const monthsToFetch: Array<{year: number, month: number}> = []
   
-  // Get the last 90 days - need to cover ~4 months
-  const startDate = new Date()
-  startDate.setDate(startDate.getDate() - 90)
+  // Get current year - January 1 to today
+  const startDate = new Date(now.getFullYear(), 0, 1)
   
   // Build list of months to fetch
   const current = new Date(startDate.getFullYear(), startDate.getMonth(), 1)
@@ -316,9 +322,8 @@ async function fetchSchedule(cookies: string, clinicianId: number): Promise<Sche
     }
   }
   
-  // Filter to only include sessions within the last 90 days
-  const cutoffDate = new Date()
-  cutoffDate.setDate(cutoffDate.getDate() - 90)
+  // Filter to only include sessions within the current year
+  const cutoffDate = new Date(now.getFullYear(), 0, 1)
   cutoffDate.setHours(0, 0, 0, 0)
   
   const filteredSessions = allSessions.filter(session => {
@@ -358,27 +363,47 @@ async function getClinicianId(cookies: string): Promise<number> {
   return 63237
 }
 
-async function fetchERAs(cookies: string, startDate: string, endDate: string) {
-  const response = await fetch('https://www.therapynotes.com/app/billing/eras/searcheras.aspx?msg=3', {
-    method: 'POST',
-    headers: { ...TN_HEADERS, 'Referer': 'https://www.therapynotes.com/app/billing/eras/', 'Cookie': cookies },
-    body: new URLSearchParams({
-      msg: '3',
-      status: '-1',
-      insuranceprovider: '',
-      patient: '',
-      payee: '',
-      receiveddaterangestart: startDate,
-      receiveddaterangeend: endDate,
-      eranumber: '',
-      page: '1',
-      correlationid: crypto.randomUUID(),
-      tnrac: TN_RAC
-    }).toString()
-  })
+async function fetchERAs(cookies: string, startDate: string, endDate: string): Promise<ERARecord[]> {
+  const allERAs: ERARecord[] = []
+  let page = 1
+  let hasMorePages = true
 
-  const data = await response.json()
-  return data.ERAs || []
+  while (hasMorePages) {
+    const response = await fetch('https://www.therapynotes.com/app/billing/eras/searcheras.aspx?msg=3', {
+      method: 'POST',
+      headers: { ...TN_HEADERS, 'Referer': 'https://www.therapynotes.com/app/billing/eras/', 'Cookie': cookies },
+      body: new URLSearchParams({
+        msg: '3',
+        status: '-1',
+        insuranceprovider: '',
+        patient: '',
+        payee: '',
+        receiveddaterangestart: startDate,
+        receiveddaterangeend: endDate,
+        eranumber: '',
+        page: page.toString(),
+        correlationid: crypto.randomUUID(),
+        tnrac: TN_RAC
+      }).toString()
+    })
+
+    const data = await response.json()
+    const eras = data.ERAs || []
+    
+    if (eras.length === 0) {
+      hasMorePages = false
+    } else {
+      allERAs.push(...eras)
+      const totalPages = data.PageCount || 1
+      if (page >= totalPages) {
+        hasMorePages = false
+      } else {
+        page++
+      }
+    }
+  }
+
+  return allERAs
 }
 
 function parseAmount(str: string): number {
@@ -687,8 +712,7 @@ async function fetchDirectPayMap(cookies: string): Promise<DirectPayMap> {
           assignment: 'any',
           status: 'active',
           correlationid: crypto.randomUUID(),
-          tnrac: TN_RAC,
-          tnv: '2025.9.7.80.334985'
+          tnrac: TN_RAC
         }).toString()
       })
       
@@ -772,11 +796,11 @@ async function fetchDirectPayMap(cookies: string): Promise<DirectPayMap> {
   return directPayMap
 }
 
-// Save billing data to database
-async function saveBillingDataToDB(
+// Save report rows to database (one row per table row)
+async function saveReportRowsToDB(
   supabase: SupabaseClientType,
   therapistId: string,
-  billingSessions: SessionData[],
+  rows: CombinedRow[],
   startDate: Date,
   endDate: Date
 ): Promise<void> {
@@ -788,32 +812,60 @@ async function saveBillingDataToDB(
     .from('report')
     .delete()
     .eq('therapist_id', therapistId)
-    .gte('service_date', startDateStr)
-    .lte('service_date', endDateStr)
+    .gte('date', startDateStr)
+    .lte('date', endDateStr)
 
   if (deleteError) {
-    console.error('Error deleting old billing data:', deleteError)
-    // Don't throw - continue with insert even if delete fails
+    console.error('Error deleting old report data:', deleteError)
   }
 
-  // Insert new data
-  const records = billingSessions.map(session => {
-    // Convert MM/DD/YYYY to YYYY-MM-DD
-    const [month, day, year] = session.serviceDate.split('/')
-    const serviceDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+  // Flatten rows into database records (one per billing line, or one for schedule-only)
+  const records: ReportDBRecord[] = []
+  
+  for (const row of rows) {
+    const date = row.schedule?.date || row.billing[0]?.serviceDate
+    const clientName = row.schedule?.clientName || row.billing[0]?.clientName
     
-    return {
-      therapist_id: therapistId,
-      service_date: serviceDate,
-      client_name: session.clientName,
-      service_code: session.serviceCode,
-      payer_name: session.payerName,
-      charged_amount: session.chargedAmount,
-      insurance_paid: session.insurancePaid,
-      patient_responsibility: session.patientResponsibility,
-      last_synced_at: new Date().toISOString()
+    if (!date || !clientName) continue
+    
+    // Convert MM/DD/YYYY to YYYY-MM-DD
+    const [month, day, year] = date.split('/')
+    const dbDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    
+    // If there's billing data, create one record per billing line
+    if (row.billing.length > 0) {
+      for (const billing of row.billing) {
+        records.push({
+          therapist_id: therapistId,
+          date: dbDate,
+          client_name: clientName,
+          service_code: billing.serviceCode,
+          payer_name: billing.payerName,
+          charged_amount: billing.chargedAmount,
+          insurance_paid: billing.insurancePaid,
+          patient_responsibility: billing.patientResponsibility,
+          note_status: row.noteStatus || null,
+          last_synced_at: new Date().toISOString()
+        })
+      }
+    } else {
+      // Schedule-only row (no billing)
+      const isDirectPay = row.isDirectPay || false
+      
+      records.push({
+        therapist_id: therapistId,
+        date: dbDate,
+        client_name: clientName,
+        service_code: null,
+        payer_name: isDirectPay ? 'Direct' : null,
+        charged_amount: null,
+        insurance_paid: null,
+        patient_responsibility: null,
+        note_status: row.noteStatus || null,
+        last_synced_at: new Date().toISOString()
+      })
     }
-  })
+  }
 
   if (records.length > 0) {
     const { error } = await supabase
@@ -821,19 +873,19 @@ async function saveBillingDataToDB(
       .insert(records)
 
     if (error) {
-      console.error('Error saving billing data:', error)
-      throw new Error(`Failed to save billing data: ${error.message}`)
+      console.error('Error saving report data:', error)
+      throw new Error(`Failed to save report data: ${error.message}`)
     }
   }
 }
 
-// Read billing data from database
-async function getBillingDataFromDB(
+// Read report rows from database
+async function getReportRowsFromDB(
   supabase: SupabaseClientType,
   therapistId: string,
   startDate: Date,
   endDate: Date
-): Promise<SessionData[]> {
+): Promise<CombinedRow[]> {
   const startDateStr = startDate.toISOString().split('T')[0]
   const endDateStr = endDate.toISOString().split('T')[0]
 
@@ -841,41 +893,70 @@ async function getBillingDataFromDB(
     .from('report')
     .select('*')
     .eq('therapist_id', therapistId)
-    .gte('service_date', startDateStr)
-    .lte('service_date', endDateStr)
-    .order('service_date', { ascending: true })
+    .gte('date', startDateStr)
+    .lte('date', endDateStr)
+    .order('date', { ascending: true })
 
   if (error) {
-    console.error('Error reading billing data:', error)
-    throw new Error(`Failed to read billing data: ${error.message}`)
+    console.error('Error reading report data:', error)
+    throw new Error(`Failed to read report data: ${error.message}`)
   }
 
   if (!data || data.length === 0) {
     return []
   }
 
-  // Transform database records back to SessionData format
-  return data.map((record: ReportRecord) => {
+  // Group by date + client name to reconstruct CombinedRow structure
+  const rowMap = new Map<string, CombinedRow>()
+  
+  for (const record of data as ReportDBRecord[]) {
     // Convert YYYY-MM-DD back to MM/DD/YYYY
-    const [year, month, day] = record.service_date.split('-')
-    const serviceDate = `${parseInt(month)}/${parseInt(day)}/${year}`
-
-    return {
-      serviceDate,
-      clientName: record.client_name,
-      serviceCode: record.service_code,
-      chargedAmount: typeof record.charged_amount === 'string' 
-        ? parseFloat(record.charged_amount) 
-        : record.charged_amount,
-      insurancePaid: typeof record.insurance_paid === 'string'
-        ? parseFloat(record.insurance_paid)
-        : record.insurance_paid,
-      patientResponsibility: typeof record.patient_responsibility === 'string'
-        ? parseFloat(record.patient_responsibility)
-        : record.patient_responsibility,
-      payerName: record.payer_name || ''
+    const [year, month, day] = record.date.split('-')
+    const dateStr = `${parseInt(month)}/${parseInt(day)}/${year}`
+    const key = `${dateStr}|${record.client_name}`
+    
+    if (!rowMap.has(key)) {
+      // Create schedule if this is a schedule-only row (no service_code)
+      const schedule = record.service_code ? null : {
+        date: dateStr,
+        startDateTime: new Date(record.date).toISOString(),
+        clientName: record.client_name
+      }
+      
+      rowMap.set(key, {
+        schedule,
+        billing: [],
+        hasSchedule: !!schedule,
+        hasBilling: false,
+        isDirectPay: record.payer_name === 'Direct' ? true : undefined,
+        noteStatus: record.note_status as 'Note Synced' | 'Needs Note' | undefined
+      })
     }
-  })
+    
+    const row = rowMap.get(key)!
+    
+    // Add billing data if present
+    if (record.service_code) {
+      row.billing.push({
+        serviceDate: dateStr,
+        clientName: record.client_name,
+        serviceCode: record.service_code,
+        chargedAmount: record.charged_amount === null ? 0 : (typeof record.charged_amount === 'string' 
+          ? parseFloat(record.charged_amount) || 0
+          : record.charged_amount || 0),
+        insurancePaid: record.insurance_paid === null ? 0 : (typeof record.insurance_paid === 'string'
+          ? parseFloat(record.insurance_paid) || 0
+          : record.insurance_paid || 0),
+        patientResponsibility: record.patient_responsibility === null ? 0 : (typeof record.patient_responsibility === 'string'
+          ? parseFloat(record.patient_responsibility) || 0
+          : record.patient_responsibility || 0),
+        payerName: record.payer_name || ''
+      })
+      row.hasBilling = true
+    }
+  }
+  
+  return Array.from(rowMap.values())
 }
 
 // Get note status for sessions from mizeup database
@@ -1025,11 +1106,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const shouldRefresh = searchParams.get('refresh') === 'true'
 
-    // Set date range: last 90 days
+    // Set date range: current year
     const endDate = new Date()
     endDate.setHours(23, 59, 59, 999)
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 90)
+    const startDate = new Date(endDate.getFullYear(), 0, 1) // January 1 of current year
     startDate.setHours(0, 0, 0, 0)
 
     let validBillingSessions: SessionData[] = []
@@ -1085,65 +1165,61 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Validate billing sessions and filter by service date (last 90 days)
+      // Validate billing sessions and filter by service date (current year)
       validBillingSessions = allBillingSessions.filter(session => {
         if (!session.clientName || session.clientName.length < 2) return false
         if (!session.serviceDate || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(session.serviceDate)) return false
         if (!session.serviceCode || !/^\d{5}$/.test(session.serviceCode)) return false
         
-        // Filter by service date - only include services within the last 90 days
         const serviceTimestamp = parseDateToTimestamp(session.serviceDate)
         if (serviceTimestamp === 0) return false
         const serviceDateObj = new Date(serviceTimestamp)
         return serviceDateObj >= startDate && serviceDateObj <= endDate
       })
 
-      // Save to database
-      await saveBillingDataToDB(supabase, user.id, validBillingSessions, startDate, endDate)
-    } else {
-      // Read from database
-      validBillingSessions = await getBillingDataFromDB(supabase, user.id, startDate, endDate)
+      // Match schedule to billing
+      const combinedRows = matchSessionsToBilling(scheduleSessions, validBillingSessions, directPayMap)
       
-      // For schedule data, we still need to fetch it (or cache it separately)
-      // For now, fetch it but don't save - we can optimize later
-      const { data: therapist } = await supabase
-        .from('therapists')
-        .select('therapynotes_username, therapynotes_password, therapynotes_practice_code')
-        .eq('id', user.id)
-        .single()
-
-      if (therapist?.therapynotes_username && therapist?.therapynotes_password && therapist?.therapynotes_practice_code) {
-        const { accessToken, sessionId } = await loginToTherapyNotes(
-          therapist.therapynotes_username,
-          therapist.therapynotes_password,
-          therapist.therapynotes_practice_code
-        )
-        const cookies = `${BASE_COOKIES}; access-token=${accessToken}; ASP.NET_SessionId=${sessionId}; practicecode=${therapist.therapynotes_practice_code}`
-        const clinicianId = await getClinicianId(cookies)
-        scheduleSessions = await fetchSchedule(cookies, clinicianId)
-        directPayMap = await fetchDirectPayMap(cookies)
+      // Add note status from mizeup database
+      await getNoteStatusForSessions(supabase, user.id, combinedRows)
+      
+      // Save complete report rows to database
+      await saveReportRowsToDB(supabase, user.id, combinedRows, startDate, endDate)
+      
+      // Calculate totals
+      const totals = {
+        totalCharged: validBillingSessions.reduce((sum, s) => sum + s.chargedAmount, 0),
+        totalInsurancePaid: validBillingSessions.reduce((sum, s) => sum + s.insurancePaid, 0),
+        totalPatientResponsibility: validBillingSessions.reduce((sum, s) => sum + s.patientResponsibility, 0),
+        totalScheduledSessions: scheduleSessions.length,
+        totalBilledServices: validBillingSessions.length
       }
+
+      return NextResponse.json({ 
+        rows: combinedRows,
+        totals
+      })
+    } else {
+      // Read from database only - no TherapyNotes API calls
+      const combinedRows = await getReportRowsFromDB(supabase, user.id, startDate, endDate)
+      
+      // Calculate totals from stored rows
+      const totals = {
+        totalCharged: combinedRows.reduce((sum, row) => 
+          sum + row.billing.reduce((s, b) => s + b.chargedAmount, 0), 0),
+        totalInsurancePaid: combinedRows.reduce((sum, row) => 
+          sum + row.billing.reduce((s, b) => s + b.insurancePaid, 0), 0),
+        totalPatientResponsibility: combinedRows.reduce((sum, row) => 
+          sum + row.billing.reduce((s, b) => s + b.patientResponsibility, 0), 0),
+        totalScheduledSessions: combinedRows.filter(r => r.hasSchedule).length,
+        totalBilledServices: combinedRows.reduce((sum, row) => sum + row.billing.length, 0)
+      }
+
+      return NextResponse.json({ 
+        rows: combinedRows,
+        totals
+      })
     }
-
-    // Match schedule to billing
-    const combinedRows = matchSessionsToBilling(scheduleSessions, validBillingSessions, directPayMap)
-    
-    // Add note status from mizeup database
-    await getNoteStatusForSessions(supabase, user.id, combinedRows)
-
-    // Calculate totals
-    const totals = {
-      totalCharged: validBillingSessions.reduce((sum, s) => sum + s.chargedAmount, 0),
-      totalInsurancePaid: validBillingSessions.reduce((sum, s) => sum + s.insurancePaid, 0),
-      totalPatientResponsibility: validBillingSessions.reduce((sum, s) => sum + s.patientResponsibility, 0),
-      totalScheduledSessions: scheduleSessions.length,
-      totalBilledServices: validBillingSessions.length
-    }
-
-    return NextResponse.json({ 
-      rows: combinedRows,
-      totals
-    })
 
   } catch (error) {
     console.error('Report fetch error:', error)
