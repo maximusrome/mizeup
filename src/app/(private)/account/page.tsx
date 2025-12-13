@@ -1,6 +1,7 @@
 import SignOutButton from './_components/sign-out-button'
 import TherapyNotesCredentials from './_components/therapynotes-form'
 import SquareForm from './_components/square-form'
+import VenmoForm from './_components/venmo-form'
 import ReminderSettings from './_components/reminder-settings'
 import CalendarSettings from './_components/calendar-settings'
 import SessionRecordingButton from './_components/session-recording-button'
@@ -61,6 +62,9 @@ export default async function AccountPage() {
 
               {/* Square Integration */}
               <SquareForm />
+
+              {/* Venmo Integration */}
+              <VenmoForm />
 
               {/* Calendar Import */}
               <CalendarSettings />
