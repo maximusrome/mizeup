@@ -7,8 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Eye, EyeOff, Check, Loader2 } from 'lucide-react'
 
-const DEFAULT_TOKEN = '058585d6dea3a31db96f0e5c3ea313b3bfcf81cbdc6da15db4862512c3a18fc5'
-
 type Transaction = {
   id: string
   amount: number
@@ -28,7 +26,7 @@ export default function VenmoForm() {
   const [transactions, setTransactions] = useState<Transaction[] | null>(null)
 
   useEffect(() => {
-    fetch('/api/venmo').then(r => r.ok ? r.json() : null).then(d => setAccessToken(d?.accessToken || DEFAULT_TOKEN)).finally(() => setLoading(false))
+    fetch('/api/venmo').then(r => r.ok ? r.json() : null).then(d => setAccessToken(d?.accessToken || '')).finally(() => setLoading(false))
   }, [])
 
   const handle = async (action: 'save' | 'test') => {

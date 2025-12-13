@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 const VENMO_API = 'https://api.venmo.com/v1'
-const DEFAULT_TOKEN = '058585d6dea3a31db96f0e5c3ea313b3bfcf81cbdc6da15db4862512c3a18fc5'
 const PAYER_MAP: Record<string, string> = { 'kimberly napier': 'jenna fitzpatrick' }
 
 type VenmoTransaction = {
@@ -63,9 +62,9 @@ export async function GET(request: Request) {
 
     if (type === 'transactions') {
       const { data: t } = await auth.supabase!.from('therapists').select('venmo_access_token').eq('id', auth.user!.id).single()
-      const token = t?.venmo_access_token || DEFAULT_TOKEN
+      if (!t?.venmo_access_token) return NextResponse.json({ error: 'Venmo credentials not configured' }, { status: 400 })
       const headers = {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Bearer ${t.venmo_access_token}`,
         'Content-Type': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
       }
@@ -125,13 +124,14 @@ export async function GET(request: Request) {
             tn_patient_name: matched?.name || null
           }
         })
+        .filter((tx: Transaction) => tx.tn_patient_id !== null)
         .sort((a, b) => new Date(b.date_created).getTime() - new Date(a.date_created).getTime())
 
       return NextResponse.json({ transactions, count: transactions.length })
     }
 
     const { data: t } = await auth.supabase!.from('therapists').select('venmo_access_token').eq('id', auth.user!.id).single()
-    return NextResponse.json({ accessToken: t?.venmo_access_token || DEFAULT_TOKEN })
+    return NextResponse.json({ accessToken: t?.venmo_access_token || '' })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Request failed' }, { status: 500 })
   }
