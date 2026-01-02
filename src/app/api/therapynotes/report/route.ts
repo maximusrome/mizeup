@@ -306,6 +306,21 @@ const STATEMENT_FILTER = {
   SortDirection: 'asc', SortParameter: 0, ShowWriteOffStatementOnly: null, ShowAutoPayOnly: false
 }
 
+interface ReportRow {
+  therapist_id: string
+  date: string
+  time: string | null
+  patient_name: string
+  service_code: string
+  payer: string
+  rate: number
+  insurance_paid: number | null
+  client_amount: number | null
+  remainder: number | null
+  is_addon: boolean
+  session_order: number
+}
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient()
@@ -317,7 +332,7 @@ export async function GET(request: Request) {
     if (!refresh) {
       // Load all rows from database (paginate past 1000 limit)
       const year = new Date().getFullYear()
-      const dbRows: any[] = []
+      const dbRows: ReportRow[] = []
       let from = 0
       
       while (true) {
