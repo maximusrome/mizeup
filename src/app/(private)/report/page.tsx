@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Fragment } from 'react'
+import { useState, Fragment, useEffect } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertCircle, RefreshCw } from 'lucide-react'
@@ -24,6 +24,7 @@ interface ERAEntry {
 
 interface ReportItem {
   date: string
+  time?: string
   patientName: string
   serviceCode: string
   payer: string
@@ -52,11 +53,12 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchReport = async () => {
+  const fetchReport = async (refresh = false) => {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetch('/api/therapynotes/report')
+      const url = refresh ? '/api/therapynotes/report?refresh=true' : '/api/therapynotes/report'
+      const response = await fetch(url)
       const result = await response.json()
       if (!response.ok) throw new Error(result.message || result.error || 'Failed to fetch report')
       setReportData(result)
@@ -67,6 +69,10 @@ export default function ReportPage() {
     }
   }
 
+  useEffect(() => {
+    fetchReport()
+  }, [])
+
   return (
     <div className="container mx-auto px-4 max-w-7xl">
       <div className="py-8">
@@ -75,9 +81,9 @@ export default function ReportPage() {
             <h1 className="text-3xl font-bold text-foreground">Report</h1>
             <p className="text-muted-foreground mt-1 text-sm">TherapyNotes billing data for {new Date().getFullYear()}</p>
           </div>
-          <Button onClick={fetchReport} disabled={loading} variant="outline">
+          <Button onClick={() => fetchReport(true)} disabled={loading} variant="outline">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Loading...' : 'Fetch Report'}
+            {loading ? 'Refreshing...' : 'Refresh from TherapyNotes'}
           </Button>
         </div>
 
@@ -130,6 +136,7 @@ export default function ReportPage() {
                   <thead>
                     <tr className="border-b bg-muted/30">
                       <th className="text-left py-2 px-4 font-medium border-r-2">Date</th>
+                      <th className="text-left py-2 px-4 font-medium border-r-2">Time</th>
                       <th className="text-left py-2 px-4 font-medium border-r-2">Name</th>
                       <th className="text-left py-2 px-4 font-medium border-r-2">Code</th>
                       <th className="text-left py-2 px-4 font-medium border-r-2">Payer</th>
@@ -142,7 +149,7 @@ export default function ReportPage() {
                   <tbody>
                     {reportData.items.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-muted-foreground">No data found.</td>
+                        <td colSpan={9} className="py-8 text-center text-muted-foreground">No data found.</td>
                       </tr>
                     ) : (
                       reportData.items.map((item, index) => {
@@ -151,6 +158,7 @@ export default function ReportPage() {
                           <Fragment key={`item-${index}`}>
                             <tr className="border-b hover:bg-muted/30">
                               <td className="py-3 px-4 text-sm border-r-2">{item.date}</td>
+                              <td className="py-3 px-4 text-sm border-r-2">{item.time || '—'}</td>
                               <td className="py-3 px-4 text-sm border-r-2">{item.patientName}</td>
                               <td className="py-3 px-4 text-sm border-r-2">{item.serviceCode}</td>
                               <td className="py-3 px-4 text-sm text-muted-foreground max-w-[150px] truncate border-r-2" title={era?.payerName || item.payer}>{era?.payerName || item.payer}</td>
@@ -163,6 +171,7 @@ export default function ReportPage() {
                               const addOnERA = item.eraData?.find(e => e.serviceCode === addOn.serviceCodes[0])
                               return (
                                 <tr key={`item-${index}-addon-${addOnIdx}`} className="border-b hover:bg-muted/30 bg-muted/10">
+                                  <td className="py-2 px-4 text-sm border-r-2"></td>
                                   <td className="py-2 px-4 text-sm border-r-2"></td>
                                   <td className="py-2 px-4 text-sm border-r-2"></td>
                                   <td className="py-2 px-4 text-sm text-muted-foreground border-r-2">+ {addOn.serviceCode}</td>
