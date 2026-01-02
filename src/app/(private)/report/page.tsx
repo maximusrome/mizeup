@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, Fragment, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, AlertCircle, Calendar } from 'lucide-react'
+import { AlertCircle, RefreshCw } from 'lucide-react'
 
-interface ScheduleSession {
-  date: string
-  startDateTime: string
-  clientName: string
+interface AddOnService {
+  serviceCode: string
+  serviceCodes: string[]
+  rate: number
 }
 
-interface BillingData {
+interface ERAEntry {
   serviceDate: string
   clientName: string
   serviceCode: string
@@ -19,47 +19,49 @@ interface BillingData {
   insurancePaid: number
   patientResponsibility: number
   payerName: string
+  remainder: number
 }
 
-interface CombinedRow {
-  schedule: ScheduleSession | null
-  billing: BillingData[]
-  hasSchedule: boolean
-  hasBilling: boolean
-  isDirectPay?: boolean
-  noteStatus?: 'Note Synced' | 'Needs Note'
+interface ReportItem {
+  date: string
+  time?: string
+  patientName: string
+  serviceCode: string
+  payer: string
+  rate: number
+  addOnServices?: AddOnService[]
+  eraData?: ERAEntry[]
 }
 
 interface ReportData {
-  rows: CombinedRow[]
-  totals: {
-    totalCharged: number
+  items: ReportItem[]
+  totals?: {
+    totalSessions: number
+    totalRate: number
     totalInsurancePaid: number
-    totalPatientResponsibility: number
-    totalScheduledSessions: number
-    totalBilledServices: number
+    totalClientAmount: number
+    totalRemainder: number
+    matched: number
   }
 }
 
+const formatCurrency = (amount: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount)
+
 export default function ReportPage() {
-  const [data, setData] = useState<ReportData | null>(null)
+  const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchReport = async (refresh = false) => {
     setLoading(true)
     setError(null)
-
     try {
       const url = refresh ? '/api/therapynotes/report?refresh=true' : '/api/therapynotes/report'
       const response = await fetch(url)
       const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || 'Failed to fetch report')
-      }
-
-      setData(result)
+      if (!response.ok) throw new Error(result.message || result.error || 'Failed to fetch report')
+      setReportData(result)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch report')
     } finally {
@@ -67,38 +69,21 @@ export default function ReportPage() {
     }
   }
 
-  // Load data on mount
   useEffect(() => {
-    fetchReport(false)
+    fetchReport()
   }, [])
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
 
   return (
     <div className="container mx-auto px-4 max-w-7xl">
       <div className="py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">
-              Session Billing Report
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Schedule sessions matched with ERA billing data (current year)
-            </p>
+            <h1 className="text-3xl font-bold text-foreground">Report</h1>
+            <p className="text-muted-foreground mt-1 text-sm">TherapyNotes billing data for {new Date().getFullYear()}</p>
           </div>
-          <Button 
-            onClick={() => fetchReport(true)} 
-            disabled={loading}
-            variant="ghost"
-            size="icon"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          <Button onClick={() => fetchReport(true)} disabled={loading} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh from TherapyNotes'}
           </Button>
         </div>
 
@@ -113,214 +98,100 @@ export default function ReportPage() {
           </Card>
         )}
 
-        {!data && !loading && !error && (
+        {reportData && (
           <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Click &quot;Refresh Data&quot; to load your schedule and billing data from TherapyNotes.</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {loading && (
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <RefreshCw className="h-12 w-12 mx-auto mb-4 animate-spin" />
-              <p>Loading schedule and billing data from TherapyNotes...</p>
-              <p className="text-sm mt-2">This may take a moment.</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {data && !loading && (
-          <div className="space-y-6">
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled Sessions</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{data.totals.totalScheduledSessions}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Billed Services</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{data.totals.totalBilledServices}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Charged</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(data.totals.totalCharged)}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Insurance Paid</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-success">{formatCurrency(data.totals.totalInsurancePaid)}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Patient Resp.</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-info">{formatCurrency(data.totals.totalPatientResponsibility)}</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Combined Table */}
-            <Card>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/30">
-                        <th className="text-left py-2 px-4 font-medium">Date</th>
-                        <th className="text-left py-2 px-4 font-medium">Client</th>
-                        <th className="text-left py-2 px-4 font-medium">Code</th>
-                        <th className="text-left py-2 px-4 font-medium">Payer</th>
-                        <th className="text-right py-2 px-4 font-medium">Charged</th>
-                        <th className="text-right py-2 px-4 font-medium">Ins. Paid</th>
-                        <th className="text-right py-2 px-4 font-medium">Patient</th>
-                        <th className="text-left py-2 px-4 font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.rows.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                            No sessions found.
-                          </td>
-                        </tr>
-                      ) : (
-                        data.rows.map((row, index) => {
-                          const billingCount = row.billing.length
-                          const rowSpan = Math.max(1, billingCount)
-                          
-                          return (
-                            <Fragment key={`row-${index}`}>
-                              {/* First row with schedule data */}
-                              <tr
-                                className={`border-b hover:bg-muted/30 ${
-                                  !row.hasSchedule ? 'bg-muted/20' : 
-                                  !row.hasBilling ? 'bg-warning-light/20' : ''
-                                }`}
-                              >
-                                {/* Schedule columns - rowSpan for multiple billing lines */}
-                                <td className="py-3 px-4 text-sm" rowSpan={rowSpan}>
-                                  {row.schedule ? (
-                                    <div className="font-medium">{row.schedule.date}</div>
-                                  ) : row.billing[0] ? (
-                                    <div className="font-medium">{row.billing[0].serviceDate}</div>
-                                  ) : (
-                                    <span className="text-muted-foreground italic">—</span>
-                                  )}
-                                </td>
-                                <td className="py-3 px-4 text-sm" rowSpan={rowSpan}>
-                                  {row.schedule ? row.schedule.clientName : (
-                                    row.billing[0] ? row.billing[0].clientName : (
-                                      <span className="text-muted-foreground italic">—</span>
-                                    )
-                                  )}
-                                </td>
-                                
-                                {/* First billing row or empty */}
-                                {row.billing[0] ? (
-                                  <>
-                                    <td className="py-3 px-4 text-sm">{row.billing[0].serviceCode}</td>
-                                    <td className="py-3 px-4 text-sm text-muted-foreground max-w-[150px] truncate" title={row.billing[0].payerName}>
-                                      {row.billing[0].payerName}
-                                    </td>
-                                    <td className="py-3 px-4 text-right text-sm">{formatCurrency(row.billing[0].chargedAmount)}</td>
-                                    <td className="py-3 px-4 text-right text-sm text-success">{formatCurrency(row.billing[0].insurancePaid)}</td>
-                                    <td className="py-3 px-4 text-right text-sm text-info">{formatCurrency(row.billing[0].patientResponsibility)}</td>
-                                    <td className="py-3 px-4" rowSpan={rowSpan}>
-                                      {row.noteStatus === 'Note Synced' ? (
-                                        <span className="text-success text-xs">Note Synced</span>
-                                      ) : (
-                                        <span className="text-destructive text-xs">Needs Note</span>
-                                      )}
-                                    </td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td className="py-3 px-4 text-sm text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-sm text-muted-foreground">
-                                      {row.isDirectPay ? (
-                                        <span>Direct</span>
-                                      ) : (
-                                        <span className="italic">—</span>
-                                      )}
-                                    </td>
-                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4 text-right text-muted-foreground italic">—</td>
-                                    <td className="py-3 px-4" rowSpan={rowSpan}>
-                                      {row.noteStatus === 'Note Synced' ? (
-                                        <span className="text-success text-xs">Note Synced</span>
-                                      ) : row.noteStatus ? (
-                                        <span className="text-destructive text-xs">Needs Note</span>
-                                      ) : (
-                                        <span className="text-muted-foreground italic">—</span>
-                                      )}
-                                    </td>
-                                  </>
-                                )}
-                              </tr>
-                              
-                              {/* Additional billing rows (e.g., 90785 add-on codes) */}
-                              {row.billing.slice(1).map((billing, billingIdx) => (
-                                <tr 
-                                  key={`row-${index}-${billingIdx + 1}`} 
-                                  className="border-b hover:bg-muted/30"
-                                >
-                                  <td className="py-2 px-4 text-sm text-muted-foreground">
-                                    + {billing.serviceCode}
-                                  </td>
-                                  <td className="py-2 px-4 text-sm text-muted-foreground max-w-[150px] truncate" title={billing.payerName}>
-                                    {billing.payerName}
-                                  </td>
-                                  <td className="py-2 px-4 text-right text-sm">{formatCurrency(billing.chargedAmount)}</td>
-                                  <td className="py-2 px-4 text-right text-sm text-success">{formatCurrency(billing.insurancePaid)}</td>
-                                  <td className="py-2 px-4 text-right text-sm text-info">{formatCurrency(billing.patientResponsibility)}</td>
-                                  <td className="py-2 px-4"></td>
-                                </tr>
-                              ))}
-                            </Fragment>
-                          )
-                        })
-                      )}
-                    </tbody>
-                    {data.rows.length > 0 && (
-                      <tfoot>
-                        <tr className="bg-muted/50 font-medium">
-                          <td className="py-3 px-4" colSpan={2}>
-                            {data.totals.totalScheduledSessions} sessions / {data.totals.totalBilledServices} services
-                          </td>
-                          <td className="py-3 px-4"></td>
-                          <td className="py-3 px-4"></td>
-                          <td className="py-3 px-4 text-right text-sm">{formatCurrency(data.totals.totalCharged)}</td>
-                          <td className="py-3 px-4 text-right text-sm text-success">{formatCurrency(data.totals.totalInsurancePaid)}</td>
-                          <td className="py-3 px-4 text-right text-sm text-info">{formatCurrency(data.totals.totalPatientResponsibility)}</td>
-                          <td className="py-3 px-4"></td>
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
+            {reportData.totals && (
+              <CardContent className="border-b">
+                <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+                  <div>
+                    <div className="text-muted-foreground">Total Sessions</div>
+                    <div className="font-semibold text-lg">{reportData.totals.totalSessions}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">ERAs Matched</div>
+                    <div className="font-semibold text-lg">{reportData.totals.matched}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Total Rate</div>
+                    <div className="font-semibold text-lg">{formatCurrency(reportData.totals.totalRate)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Total Insurance Paid</div>
+                    <div className="font-semibold text-lg text-green-600">{formatCurrency(reportData.totals.totalInsurancePaid)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Total Client Amount</div>
+                    <div className="font-semibold text-lg text-blue-600">{formatCurrency(reportData.totals.totalClientAmount)}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground">Total Remainder</div>
+                    <div className="font-semibold text-lg">{formatCurrency(reportData.totals.totalRemainder)}</div>
+                  </div>
                 </div>
               </CardContent>
-            </Card>
-          </div>
+            )}
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left py-2 px-4 font-medium border-r-2">Date</th>
+                      <th className="text-left py-2 px-4 font-medium border-r-2">Time</th>
+                      <th className="text-left py-2 px-4 font-medium border-r-2">Name</th>
+                      <th className="text-left py-2 px-4 font-medium border-r-2">Code</th>
+                      <th className="text-left py-2 px-4 font-medium border-r-2">Payer</th>
+                      <th className="text-right py-2 px-4 font-medium border-r-2">Rate</th>
+                      <th className="text-right py-2 px-4 font-medium">Insurance Paid</th>
+                      <th className="text-right py-2 px-4 font-medium">Client Amount</th>
+                      <th className="text-right py-2 px-4 font-medium">Remainder</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.items.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-8 text-center text-muted-foreground">No data found.</td>
+                      </tr>
+                    ) : (
+                      reportData.items.map((item, index) => {
+                        const era = item.eraData?.[0]
+                        return (
+                          <Fragment key={`item-${index}`}>
+                            <tr className="border-b hover:bg-muted/30">
+                              <td className="py-3 px-4 text-sm border-r-2">{item.date}</td>
+                              <td className="py-3 px-4 text-sm border-r-2">{item.time || '—'}</td>
+                              <td className="py-3 px-4 text-sm border-r-2">{item.patientName}</td>
+                              <td className="py-3 px-4 text-sm border-r-2">{item.serviceCode}</td>
+                              <td className="py-3 px-4 text-sm text-muted-foreground max-w-[150px] truncate border-r-2" title={era?.payerName || item.payer}>{era?.payerName || item.payer}</td>
+                              <td className="py-3 px-4 text-right text-sm border-r-2">{era ? formatCurrency(era.chargedAmount) : formatCurrency(item.rate)}</td>
+                              <td className="py-3 px-4 text-right text-sm text-success">{era ? formatCurrency(era.insurancePaid) : '—'}</td>
+                              <td className="py-3 px-4 text-right text-sm text-info">{era ? formatCurrency(era.patientResponsibility) : '—'}</td>
+                              <td className="py-3 px-4 text-right text-sm">{era ? formatCurrency(era.remainder) : '—'}</td>
+                            </tr>
+                            {item.addOnServices?.map((addOn, addOnIdx) => {
+                              const addOnERA = item.eraData?.find(e => e.serviceCode === addOn.serviceCodes[0])
+                              return (
+                                <tr key={`item-${index}-addon-${addOnIdx}`} className="border-b hover:bg-muted/30 bg-muted/10">
+                                  <td className="py-2 px-4 text-sm border-r-2"></td>
+                                  <td className="py-2 px-4 text-sm border-r-2"></td>
+                                  <td className="py-2 px-4 text-sm border-r-2"></td>
+                                  <td className="py-2 px-4 text-sm text-muted-foreground border-r-2">+ {addOn.serviceCode}</td>
+                                  <td className="py-2 px-4 text-sm border-r-2"></td>
+                                  <td className="py-2 px-4 text-right text-sm border-r-2">{addOnERA ? formatCurrency(addOnERA.chargedAmount) : formatCurrency(addOn.rate)}</td>
+                                  <td className="py-2 px-4 text-right text-sm text-success">{addOnERA ? formatCurrency(addOnERA.insurancePaid) : '—'}</td>
+                                  <td className="py-2 px-4 text-right text-sm text-info">{addOnERA ? formatCurrency(addOnERA.patientResponsibility) : '—'}</td>
+                                  <td className="py-2 px-4 text-right text-sm">{addOnERA ? formatCurrency(addOnERA.remainder) : '—'}</td>
+                                </tr>
+                              )
+                            })}
+                          </Fragment>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

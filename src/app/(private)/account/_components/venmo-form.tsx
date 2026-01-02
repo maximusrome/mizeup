@@ -92,25 +92,58 @@ export default function VenmoForm() {
         </div>
 
         {transactions && transactions.length > 0 && (
-          <div className="mt-6 space-y-2">
-            <h3 className="font-semibold text-sm">Recent Transactions:</h3>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {transactions.map((tx) => (
-                <div key={tx.id} className="p-3 border rounded text-sm">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium">{tx.other_party_name || 'Unknown'}</p>
-                      {tx.tn_patient_name && <p className="text-xs text-blue-600 font-medium">→ {tx.tn_patient_name}</p>}
-                      {tx.note && <p className="text-xs text-muted-foreground italic">{tx.note}</p>}
-                      <p className="text-xs text-muted-foreground">{tx.date_created ? new Date(tx.date_created).toLocaleString() : 'Unknown date'}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-green-600">+${tx.amount.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">received</p>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Client Payment Totals:</h3>
+              <div className="border rounded overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/30">
+                    <tr>
+                      <th className="text-left py-2 px-4 font-medium">Client</th>
+                      <th className="text-right py-2 px-4 font-medium">Total Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(
+                      transactions.reduce((acc, tx) => {
+                        const clientName = tx.tn_patient_name || tx.other_party_name || 'Unknown'
+                        acc[clientName] = (acc[clientName] || 0) + tx.amount
+                        return acc
+                      }, {} as Record<string, number>)
+                    )
+                      .sort(([, a], [, b]) => b - a)
+                      .map(([clientName, total]) => (
+                        <tr key={clientName} className="border-b hover:bg-muted/30">
+                          <td className="py-2 px-4">{clientName}</td>
+                          <td className="py-2 px-4 text-right font-semibold text-green-600">
+                            ${total.toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <h3 className="font-semibold text-sm">Recent Transactions:</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className="p-3 border rounded text-sm">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-medium">{tx.other_party_name || 'Unknown'}</p>
+                        {tx.tn_patient_name && <p className="text-xs text-blue-600 font-medium">→ {tx.tn_patient_name}</p>}
+                        {tx.note && <p className="text-xs text-muted-foreground italic">{tx.note}</p>}
+                        <p className="text-xs text-muted-foreground">{tx.date_created ? new Date(tx.date_created).toLocaleString() : 'Unknown date'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-green-600">+${tx.amount.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">received</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
